@@ -1,0 +1,14 @@
+{
+    "name": "agriassist-root",
+    "version": "1.0.0",
+    "description": "Root package for running AgriAssist servers concurrently",
+    "scripts": {
+        "start": "concurrently \"npm run start:frontend\" \"npm run start:node-backend\" \"npm run start:py-backend\"",
+        "start:frontend": "cd frontend && npm run dev",
+        "start:node-backend": "cd backend && npm run start",
+        "start:py-backend": "cd backend && env\\Scripts\\uvicorn main:app --reload --port 8000"
+    },
+    "dependencies": {
+        "concurrently": "^8.2.2"
+    }
+}

@@ -1,0 +1,127 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
+import api from '../services/api';
+
+const AuthContext = createContext();
+
+export const useAuth = () => useContext(AuthContext);
+
+// Decode JWT payload without external library
+const decodeToken = (token) => {
+    try {
+        const base64Payload = token.split('.')[1];
+        const payload = JSON.parse(atob(base64Payload));
+        return payload;
+    } catch {
+        return null;
+    }
+};
+
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    // Auth0 state
+    const {
+        isLoading: auth0Loading,
+        isAuthenticated: auth0Authenticated,
+        user: auth0User,
+        getAccessTokenSilently,
+        loginWithRedirect,
+        logout: auth0Logout,
+    } = useAuth0();
+
+    // On mount — restore session from localStorage (email/password login)
+    useEffect(() => {
+        if (auth0Loading) return; // wait for Auth0 to settle first
+
+        const token = localStorage.getItem('agri_assist_token');
+        if (token) {
+            const decoded = decodeToken(token);
+            if (decoded && decoded.exp * 1000 > Date.now()) {
+                setUser({ token, id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role });
+            } else {
+                localStorage.removeItem('agri_assist_token');
+            }
+        } else if (auth0Authenticated && auth0User) {
+            // Auth0 session is active — sync with backend to get role
+            (async () => {
+                try {
+                    const token = await getAccessTokenSilently();
+                    setUser({
+                        token,
+                        id: auth0User.sub,
+                        name: auth0User.name,
+                        email: auth0User.email,
+                        picture: auth0User.picture,
+                        role: 'farmer', // default role for Auth0 users; update after role-selection step
+                    });
+                } catch (err) {
+                    console.warn('Auth0 token error:', err.message);
+                }
+            })();
+        }
+        setLoading(false);
+    }, [auth0Loading, auth0Authenticated, auth0User]);
+
+    // ─── Email / Password Login (existing backend) ───────────────────────────
+    const login = async (email, password) => {
+        try {
+            const response = await api.post('/auth/login', { email, password });
+            const { access_token } = response.data;
+            const decoded = decodeToken(access_token);
+            localStorage.setItem('agri_assist_token', access_token);
+            setUser({ token: access_token, id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role });
+            return { success: true };
+        } catch (error) {
+            const msg = error.response?.data?.message || 'Login failed. Please try again.';
+            return { success: false, message: msg };
+        }
+    };
+
+    // ─── Auth0 Social / Universal Login ────────────────────────────────────
+    const loginWithAuth0 = () => loginWithRedirect();
+
+    const signupWithAuth0 = () =>
+        loginWithRedirect({ authorizationParams: { screen_hint: 'signup' } });
+
+    // ─── Registration (existing backend) ────────────────────────────────────
+    const register = async (name, email, password, role) => {
+        try {
+            const response = await api.post('/auth/register', { name, email, password, role });
+            const { access_token } = response.data;
+            const decoded = decodeToken(access_token);
+            localStorage.setItem('agri_assist_token', access_token);
+            setUser({ token: access_token, id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role });
+            return { success: true };
+        } catch (error) {
+            const msg = error.response?.data?.message || 'Registration failed. Please try again.';
+            return { success: false, message: msg };
+        }
+    };
+
+    // ─── Logout (both flows) ────────────────────────────────────────────────
+    const logout = () => {
+        localStorage.removeItem('agri_assist_token');
+        setUser(null);
+        if (auth0Authenticated) {
+            auth0Logout({ logoutParams: { returnTo: window.location.origin } });
+        }
+    };
+
+    const isFullyLoading = loading || auth0Loading;
+
+    return (
+        <AuthContext.Provider value={{
+            user,
+            login,
+            loginWithAuth0,
+            signupWithAuth0,
+            register,
+            logout,
+            loading: isFullyLoading,
+        }}>
+            {!isFullyLoading && children}
+        </AuthContext.Provider>
+    );
+};
