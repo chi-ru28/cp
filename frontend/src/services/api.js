@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an Axios instance with base URL pointing to the FastAPI backend
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: 'https://cp-1ga1.vercel.app/api',
 });
 
 // Interceptor to add auth token to requests automatically
