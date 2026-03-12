@@ -61,7 +61,11 @@ const connectDB = async () => {
                         }
                     }
                 }),
-                pool: { max: 5, min: 0, acquire: 30000, idle: 10000 }
+                pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+                define: {
+                    underscored: true, // Use created_at instead of createdAt
+                    timestamps: true
+                }
             });
         } else {
             // ... fallback to individual variables or error
@@ -86,7 +90,8 @@ const connectDB = async () => {
 
         // D. Sync (Only if not in restricted env or if tables missing)
         try {
-            await sequelize.sync();
+            // Using alter: true to ensure missing columns like created_at are added
+            await sequelize.sync({ alter: true });
             console.log('✅ Database models synchronized');
         } catch (syncErr) {
             console.warn('⚠️ Model synchronization warning:', syncErr.message);
