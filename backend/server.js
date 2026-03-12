@@ -28,6 +28,24 @@ app.use(cors({
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Ensure DB is connected before any API request is processed
+// This is critical for Vercel (serverless) to prevent "User is not defined" errors.
+app.use(async (req, res, next) => {
+    // Skip DB check for general health/root if preferred, but safer to include it.
+    if (req.path === '/' || req.path === '/api/health') return next();
+    
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        console.error('Database connection middleware error:', err.message);
+        res.status(503).json({ 
+            message: 'Service temporarily unavailable: Database connection failed.',
+            error: err.message 
+        });
+    }
+});
+
 // Routes
 app.use('/api/auth',     authRoutes);
 app.use('/api/chat',     chatRoutes);
