@@ -23,7 +23,7 @@ const generateToken = (user) => {
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, preferredLanguage } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({ message: 'Name, email, and password are required.' });
@@ -45,7 +45,8 @@ router.post('/register', async (req, res) => {
             name: name.trim(),
             email: email.toLowerCase().trim(),
             password,
-            role: role || 'farmer'
+            role: role || 'farmer',
+            preferredLanguage: preferredLanguage || 'en'
         });
 
         const token = generateToken(user);

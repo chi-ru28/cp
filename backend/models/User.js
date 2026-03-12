@@ -28,6 +28,10 @@ const defineUserModel = (sequelize) => {
         role: {
             type: DataTypes.ENUM('farmer', 'shopkeeper', 'admin'),
             defaultValue: 'farmer'
+        },
+        preferredLanguage: {
+            type: DataTypes.ENUM('en', 'hi', 'gu'),
+            defaultValue: 'en'
         }
     }, {
         tableName: 'users',
