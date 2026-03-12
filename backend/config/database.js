@@ -34,11 +34,7 @@ const connectDB = async () => {
     if (DATABASE_URL && DATABASE_URL.trim() !== '') {
         const local = isLocalConnection(DATABASE_URL);
         
-        // Clean URL: Remove potentially conflicting parameters for Sequelize/pg
-        // Some drivers struggle with channel_binding in the string when SSL is also in options
-        const cleanedURL = DATABASE_URL.split('?')[0];
-
-        db.sequelize = new Sequelize(cleanedURL, {
+        db.sequelize = new Sequelize(DATABASE_URL, {
             dialect: 'postgres',
             dialectModule: require('pg'),
             logging: false,

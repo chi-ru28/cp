@@ -62,7 +62,10 @@ router.post('/register', async (req, res) => {
         if (error.name === 'SequelizeValidationError') {
             return res.status(400).json({ message: error.errors[0].message });
         }
-        res.status(500).json({ message: 'Server error during registration.' });
+        res.status(500).json({ 
+            message: `Server error during registration: ${error.message}`,
+            details: error.name
+        });
     }
 });
 
