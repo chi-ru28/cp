@@ -44,41 +44,38 @@ const connectDB = async () => {
         if (DATABASE_URL && DATABASE_URL.trim() !== '') {
             const local = isLocalConnection(DATABASE_URL);
             
-            sequelize = new Sequelize(DATABASE_URL, {
+            // Neon connection strings often include 'sslmode' and 'channel_binding'
+            // We strip these to avoid conflicts with Sequelize's own SSL dialectOptions
+            const cleanedURL = DATABASE_URL.split('?')[0];
+            console.log(`📡 Attempting connection for: ${cleanedURL.substring(0, 30)}...`);
+
+            sequelize = new Sequelize(cleanedURL, {
                 dialect: 'postgres',
                 dialectModule: require('pg'),
                 logging: false,
                 ...(local ? {} : {
                     dialectOptions: {
-                        ssl: { require: true, rejectUnauthorized: false }
+                        ssl: {
+                            require: true,
+                            rejectUnauthorized: false
+                        }
                     }
                 }),
                 pool: { max: 5, min: 0, acquire: 30000, idle: 10000 }
             });
         } else {
-            sequelize = new Sequelize({
-                dialect: 'postgres',
-                host: process.env.POSTGRES_HOST || 'localhost',
-                port: parseInt(process.env.POSTGRES_PORT) || 5432,
-                database: process.env.POSTGRES_DB || 'AgriAssist',
-                username: process.env.POSTGRES_USER || 'postgres',
-                password: process.env.POSTGRES_PASSWORD || '',
-                logging: false
-            });
+            // ... fallback to individual variables or error
+            throw new Error('DATABASE_URL is missing.');
         }
 
         // B. Authenticate
         try {
             await sequelize.authenticate();
-            console.log('✅ Connected to PostgreSQL');
+            console.log('✅ PostgreSQL connected successfully');
         } catch (err) {
-            console.warn(`⚠️  PostgreSQL connection failed: ${err.message}. Switching to SQLite.`);
-            sequelize = new Sequelize({
-                dialect: 'sqlite',
-                storage: './agriassist.sqlite',
-                logging: false
-            });
-            await sequelize.authenticate();
+            console.error(`❌ PostgreSQL connection failed: ${err.message}`);
+            // Do NOT fallback to SQLite in production/serverless as it's not writable/reliable
+            throw err;
         }
 
         // C. Define Models
@@ -87,10 +84,8 @@ const connectDB = async () => {
         defineProductModel(sequelize);
         defineReminderModel(sequelize);
 
-        // D. Sync (Optional but useful for schema updates)
+        // D. Sync (Only if not in restricted env or if tables missing)
         try {
-            // Note: alter: true can be very slow or fail in serverless due to timeouts/permissions.
-            // Using sync() without arguments just creates tables if they don't exist.
             await sequelize.sync();
             console.log('✅ Database models synchronized');
         } catch (syncErr) {
