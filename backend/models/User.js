@@ -54,6 +54,11 @@ const defineUserModel = (sequelize) => {
 };
 
 // Getter so routes can import the model after it's defined
-const getUser = () => User;
+const getUser = () => {
+    if (!User) {
+        throw new Error('Database not connected. Please check your DATABASE_URL environment variable.');
+    }
+    return User;
+};
 
 module.exports = { defineUserModel, getUser };

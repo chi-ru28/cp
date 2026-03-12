@@ -15,7 +15,7 @@ const isValidPassword = (password) => {
 const generateToken = (user) => {
     return jwt.sign(
         { id: user.id, email: user.email, role: user.role, name: user.name },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || 'agriassist_default_secret_2026_change_me',
         { expiresIn: '7d' }
     );
 };

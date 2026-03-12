@@ -62,22 +62,19 @@ const connectDB = async () => {
         console.log('✅ SQLite database ready at ./agriassist.sqlite');
     }
 
-    // Register models with the live sequelize instance
-    const { defineUserModel } = require('../models/User');
-    const { defineChatHistoryModel } = require('../models/ChatHistory');
-    const { defineProductModel } = require('../models/Product');
-    const { defineReminderModel } = require('../models/Reminder');
+    try {
+        defineUserModel(db.sequelize);
+        defineChatHistoryModel(db.sequelize);
+        defineProductModel(db.sequelize);
+        defineReminderModel(db.sequelize);
 
-    defineUserModel(db.sequelize);
-    defineChatHistoryModel(db.sequelize);
-    defineProductModel(db.sequelize);
-    defineReminderModel(db.sequelize);
-
-
-    // Sync all tables (alter: true updates columns without dropping data)
-    await db.sequelize.sync({ alter: true });
-    const dialect = db.sequelize.getDialect();
-    console.log(`✅ Tables synchronized (${dialect})`);
+        // Sync all tables (alter: true updates columns without dropping data)
+        await db.sequelize.sync({ alter: true });
+        const dialect = db.sequelize.getDialect();
+        console.log(`✅ Tables synchronized (${dialect})`);
+    } catch (syncErr) {
+        console.error('❌ Table synchronization failed:', syncErr.message);
+    }
 
     return db.sequelize;
 };
