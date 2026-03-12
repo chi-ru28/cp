@@ -4,7 +4,7 @@ import axios from 'axios';
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 
              (window.location.hostname.includes('vercel.app') 
-                 ? 'https://cp-1ga1.vercel.app/api' 
+                 ? `${window.location.origin}/api` 
                  : 'http://localhost:5000/api'),
 });
 
