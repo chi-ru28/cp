@@ -49,13 +49,23 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-connectDB()
-    .then(() => {
-        app.listen(PORT, () => {
-            console.log(`🚀 AgriAssist backend running on http://localhost:${PORT}`);
+// Export the app for serverless environments (like Vercel)
+module.exports = app;
+
+if (require.main === module || process.env.NODE_ENV === 'development') {
+    connectDB()
+        .then(() => {
+            app.listen(PORT, () => {
+                console.log(`🚀 AgriAssist backend running on http://localhost:${PORT}`);
+            });
+        })
+        .catch(err => {
+            console.error('❌ Failed to start database:', err.message);
+            // Don't exit if we just want to see the error in logs or if Vercel handles it
+            if (process.env.NODE_ENV !== 'production') process.exit(1);
         });
-    })
-    .catch(err => {
-        console.error('❌ Failed to start database:', err.message);
-        process.exit(1);
-    });
+} else {
+    // In serverless, ensure DB is connected
+    connectDB().catch(err => console.error('DB connection error in serverless:', err.message));
+}
+
