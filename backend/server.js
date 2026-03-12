@@ -11,6 +11,15 @@ const weatherRoutes = require('./routes/weather');
 
 const app = express();
 
+// Root route
+app.get('/', (req, res) => {
+    res.json({
+        message: 'AgriAssist Backend API is running.',
+        docs: '/api/health',
+        status: 'Active'
+    });
+});
+
 // Middleware
 app.use(cors({
     origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
