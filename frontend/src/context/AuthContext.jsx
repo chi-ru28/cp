@@ -9,10 +9,19 @@ export const useAuth = () => useContext(AuthContext);
 // Decode JWT payload without external library
 const decodeToken = (token) => {
     try {
-        const base64Payload = token.split('.')[1];
-        const payload = JSON.parse(atob(base64Payload));
+        let base64Payload = token.split('.')[1];
+        // Normalize Base64Url format to standard Base64
+        base64Payload = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
+        // Pad with standard '='
+        const pad = base64Payload.length % 4;
+        if (pad) {
+            if (pad === 1) throw new Error('InvalidLengthError: Input base64url string is the wrong length to determine padding');
+            base64Payload += new Array(5 - pad).join('=');
+        }
+        const payload = JSON.parse(window.atob(base64Payload));
         return payload;
-    } catch {
+    } catch (e) {
+        console.error("Token decode error:", e);
         return null;
     }
 };

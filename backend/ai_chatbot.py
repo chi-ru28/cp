@@ -3,21 +3,19 @@ import requests
 from datetime import datetime
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from dotenv import load_dotenv
 from langdetect import detect
 import google.generativeai as genai
-from motor.motor_asyncio import AsyncIOMotorClient
 from routes.chat_routes import get_current_user
+from database import get_db
+import models
 
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/agriassist")
-
-client = AsyncIOMotorClient(MONGO_URI)
-db = client["agriassist"]
-chat_collection = db["chat_histories"]
 
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
@@ -59,15 +57,15 @@ Focus on: fertilizer issues, tools suggestion, organic/chemical alternatives, sa
 SHOPKEEPER_PROMPT = """You are AgriAssist B2B assistant for agriculture shopkeepers.
 Focus on: inventory updates, chemical/organic separation, status and advisory. Keep responses short and professional."""
 
-async def save_chat(user_id, session_id, role, message, reply):
-    await chat_collection.insert_one({
-        "userId": user_id,
-        "sessionId": session_id,
-        "role": role,
-        "message": message,
-        "reply": reply,
-        "timestamp": datetime.utcnow()
-    })
+def save_chat(db: Session, user_id: int, role: str, message: str, reply: str):
+    new_chat = models.ChatHistory(
+        user_id=user_id,
+        role=role,
+        message=message,
+        response=reply
+    )
+    db.add(new_chat)
+    db.commit()
 
 def generate_with_retry(prompt):
     try:
@@ -80,7 +78,7 @@ def generate_with_retry(prompt):
         except: return None
 
 @router.post("/")
-async def chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
+async def chat(request: ChatRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user_id = current_user.get("user_id")
     role = (current_user.get("role") or request.role or "farmer").lower()
     message = request.message.strip()
@@ -96,13 +94,14 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
     import uuid
     session_id = request.sessionId or str(uuid.uuid4())
 
-    cursor = chat_collection.find({"userId": user_id, "sessionId": session_id}).sort("timestamp", -1).limit(5)
-    past_chats = await cursor.to_list(length=5)
+    # Get recent context from Postgres
+    past_chats = db.query(models.ChatHistory).filter(models.ChatHistory.user_id == user_id).order_by(desc(models.ChatHistory.created_at)).limit(5).all()
+    past_chats.reverse()
     
-    history_text = "--- Recent History ---\n" + "".join([f"User: {c['message']}\nYou: {c['reply']}\n" for c in reversed(past_chats)]) + "\n" if past_chats else ""
+    history_text = "--- Recent History ---\n" + "".join([f"User: {c.message}\nYou: {c.response}\n" for c in past_chats]) + "\n" if past_chats else ""
     final_prompt = f"Role: {role}\nLanguage: {language}\nWeather: {weather_info}\n{history_text}Current Q: {message}\nRespond nicely in {language}."
 
     ai_reply = generate_with_retry(system_prompt + final_prompt) or "I'm sorry 🙏 I'm having trouble connecting. Try again shortly."
-    await save_chat(user_id, session_id, role, message, ai_reply)
+    save_chat(db, user_id, role, message, ai_reply)
 
     return {"role": role, "language": language, "weather": weather_info, "reply": ai_reply, "sessionId": session_id}

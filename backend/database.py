@@ -1,23 +1,24 @@
 import os
-from motor.motor_asyncio import AsyncIOMotorClient
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/agriassist")
+# Use the exact DB URL provided in the requirement
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5432/AgriAssist")
 
-class Database:
-    client: AsyncIOMotorClient = None
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-db = Database()
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def get_database():
-    return db.client.get_database("agriassist")
+Base = declarative_base()
 
-def connect_to_mongo():
-    db.client = AsyncIOMotorClient(MONGO_URI)
-    print("Connected to MongoDB via PyMongo/Motor")
-
-def close_mongo_connection():
-    db.client.close()
-    print("Closed MongoDB connection")
+# Dependency for FastAPI
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
