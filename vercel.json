@@ -20,8 +20,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "frontend/$1",
-      "checkInternalRecheck": true
+      "destination": "frontend/$1"
     },
     {
       "source": "/(.*)",
