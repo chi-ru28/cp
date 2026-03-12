@@ -33,14 +33,30 @@ const connectDB = async () => {
     // 1. Initialize Sequelize instance
     if (DATABASE_URL && DATABASE_URL.trim() !== '') {
         const local = isLocalConnection(DATABASE_URL);
-        db.sequelize = new Sequelize(DATABASE_URL, {
+        
+        // Clean URL: Remove potentially conflicting parameters for Sequelize/pg
+        // Some drivers struggle with channel_binding in the string when SSL is also in options
+        const cleanedURL = DATABASE_URL.split('?')[0];
+
+        db.sequelize = new Sequelize(cleanedURL, {
             dialect: 'postgres',
+            dialectModule: require('pg'),
             logging: false,
             ...(local ? {} : {
                 dialectOptions: {
-                    ssl: { require: true, rejectUnauthorized: false }
+                    ssl: {
+                        require: true,
+                        rejectUnauthorized: false
+                    }
                 }
-            })
+            }),
+            // Use connection pooling settings appropriate for serverless
+            pool: {
+                max: 5,
+                min: 0,
+                acquire: 30000,
+                idle: 10000
+            }
         });
     } else {
         db.sequelize = new Sequelize({
