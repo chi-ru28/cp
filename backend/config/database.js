@@ -89,10 +89,12 @@ const connectDB = async () => {
 
         // D. Sync (Optional but useful for schema updates)
         try {
-            await sequelize.sync({ alter: true });
+            // Note: alter: true can be very slow or fail in serverless due to timeouts/permissions.
+            // Using sync() without arguments just creates tables if they don't exist.
+            await sequelize.sync();
             console.log('✅ Database models synchronized');
         } catch (syncErr) {
-            console.error('❌ Model synchronization error:', syncErr.message);
+            console.warn('⚠️ Model synchronization warning:', syncErr.message);
         }
 
         db.sequelize = sequelize;
