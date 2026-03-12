@@ -54,13 +54,22 @@ app.use('/api/reminder', reminderRoutes);
 app.use('/api/weather',  weatherRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-    const { db } = require('./config/database');
-    res.json({
-        status: 'OK',
-        message: 'AgriAssist backend running',
-        db: db.sequelize ? db.sequelize.getDialect() : 'not connected'
-    });
+app.get('/api/health', async (req, res) => {
+    try {
+        await connectDB();
+        const { db } = require('./config/database');
+        res.json({
+            status: 'OK',
+            message: 'AgriAssist backend running',
+            db: db.sequelize ? db.sequelize.getDialect() : 'not connected'
+        });
+    } catch (err) {
+        res.status(500).json({
+            status: 'ERROR',
+            message: 'AgriAssist backend running but DB connection failed',
+            error: err.message
+        });
+    }
 });
 
 // 404
