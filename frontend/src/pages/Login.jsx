@@ -14,11 +14,33 @@ const Login = () => {
     const { login, loginWithAuth0, signupWithAuth0 } = useAuth();
     const navigate = useNavigate();
 
+    const getPasswordStrength = (pass) => {
+        if (!pass) return { score: 0, label: '', color: '' };
+        let score = 0;
+        if (pass.length >= 8) score += 1;
+        if (/[A-Z]/.test(pass)) score += 1;
+        if (/[a-z]/.test(pass)) score += 1;
+        if (/[0-9]/.test(pass)) score += 1;
+        if (/[!@#\$%\^&\*\(\)_\+\-=\[\]\{\}\|;:",\.<>\?/~`]/.test(pass)) score += 1;
+        
+        if (score <= 2) return { score, label: 'Weak', color: 'bg-red-500' };
+        if (score <= 4) return { score, label: 'Medium', color: 'bg-yellow-500' };
+        return { score, label: 'Strong', color: 'bg-green-500' };
+    };
+
+    const strength = getPasswordStrength(password);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        setIsLoading(true);
 
+        if (strength.label === 'Weak' || strength.label === 'Medium') {
+            alert(`Your password is ${strength.label}. Please use a stronger password (8+ chars, upper, lower, number, special).`);
+            // Only blocking if truly invalid according to system rules
+            if (strength.score < 5) return; 
+        }
+
+        setIsLoading(true);
         const res = await login(email, password);
         if (res.success) {
             navigate('/chat');
@@ -27,6 +49,18 @@ const Login = () => {
         }
         setIsLoading(false);
     };
+
+    const ShowIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" height="15.6px" viewBox="0 -960 960 960" width="15.6px" fill="#64748b">
+            <path d="M160-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM80-200v-80h800v80H80Zm315-275q-35-35-35-85t35-85q35-35 85-35t85 35q35 35 35 85t-35 85q-35 35-85 35t-85-35Zm320 0q-35-35-35-85t35-85q35-35 85-35t85 35q35 35 35 85t-35 85q-35 35-85 35t-85-35Z"/>
+        </svg>
+    );
+
+    const HideIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" height="15.6px" viewBox="0 -960 960 960" width="15.6px" fill="#64748b">
+            <path d="M160-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm555-35q-35-35-35-85t35-85q35-35 85-35t85 35q35 35 35 85t-35 85q-35 35-85 35t-85-35Zm-135-19L414-660q14-10 31-15t35-5q50 0 85 35t35 85q0 18-5 35t-15 31ZM792-56 648-200H80v-80h488L56-792l56-56 736 736-56 56Z"/>
+        </svg>
+    );
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-agri-50 to-slate-100">
@@ -85,11 +119,28 @@ const Login = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 transition-colors"
                                 >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    {showPassword ? <HideIcon /> : <ShowIcon />}
                                 </button>
                             </div>
+                            {password && (
+                                <div className="mt-2 text-xs font-medium">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-slate-500">Strength:</span>
+                                        <span className={strength.label === 'Strong' ? 'text-green-600' : strength.label === 'Medium' ? 'text-yellow-600' : 'text-red-600'}>
+                                            {strength.label}
+                                        </span>
+                                    </div>
+                                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${(strength.score / 5) * 100}%` }}
+                                            className={`h-full ${strength.color}`} 
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <button

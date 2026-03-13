@@ -11,7 +11,7 @@ class UserCreate(BaseModel):
     @validator('password')
     def password_must_be_valid(cls, v):
         if not is_valid_password(v):
-            raise ValueError('Password must be at least 8 characters long, contain an uppercase letter, lowercase letter, number, and a special character (@, &, *, !)')
+            raise ValueError('Password must be at least 8 characters long, contain an uppercase letter, lowercase letter, number, and a special character (&, #, !, *, etc.)')
         return v
     
 class UserLogin(BaseModel):

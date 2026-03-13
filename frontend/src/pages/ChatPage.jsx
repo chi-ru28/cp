@@ -200,7 +200,7 @@ const ChatInterface = () => {
             </aside>
 
             {/* Main area */}
-            <main className="flex-1 flex flex-col relative w-full h-full bg-slate-50">
+            <main className="flex-1 flex flex-col min-w-0 bg-slate-50 h-screen overflow-hidden">
                 {/* Header */}
                 <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-10">
                     <button className="xl:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg" onClick={() => setSidebarOpen(true)}><Menu size={22} /></button>
@@ -238,8 +238,8 @@ const ChatInterface = () => {
                 </header>
 
                 {/* Main Content */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-36 scroll-smooth w-full">
-                    <div className="max-w-4xl mx-auto">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth w-full">
+                    <div className="max-w-4xl mx-auto min-h-full">
                         <AnimatePresence mode="wait">
                             {viewMode === 'chat' ? (
                                 <motion.div key="chat" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
@@ -319,7 +319,7 @@ const ChatInterface = () => {
                 </div>
 
                 {/* Input area */}
-                <div className="absolute bottom-0 w-full left-0 right-0 p-4 md:p-5 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent">
+                <div className="shrink-0 p-4 md:p-5 bg-white border-t border-slate-100">
                     <div className="max-w-4xl mx-auto">
                         {/* Image preview */}
                         {imagePreview && (
@@ -333,7 +333,7 @@ const ChatInterface = () => {
                         )}
 
                         <form onSubmit={handleSend}
-                            className="relative bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200 p-2 flex items-end gap-2 focus-within:ring-2 focus-within:ring-agri-200 focus-within:border-agri-400 transition-all">
+                            className="relative bg-white rounded-3xl shadow-lg border border-slate-200 p-2 flex items-end gap-2 focus-within:ring-2 focus-within:ring-agri-200 focus-within:border-agri-400 transition-all">
 
                             {/* Image upload */}
                             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
@@ -367,7 +367,7 @@ const ChatInterface = () => {
                                 <Send size={18} className={input.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''} />
                             </button>
                         </form>
-                        <p className="text-center mt-2 text-xs text-slate-400">{t('chatDisclaimer')}</p>
+                        <p className="text-center mt-2 text-[10px] text-slate-400">{t('chatDisclaimer')}</p>
                     </div>
                 </div>
             </main>

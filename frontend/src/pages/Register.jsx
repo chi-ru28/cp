@@ -12,25 +12,31 @@ const Register = () => {
 
     const { register } = useAuth();
     const navigate = useNavigate();
-
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const validatePassword = (pass) => {
-        if (pass.length < 8) return false;
-        if (!/[A-Z]/.test(pass)) return false;
-        if (!/[a-z]/.test(pass)) return false;
-        if (!/[0-9]/.test(pass)) return false;
-        if (!/[@&*!]/.test(pass)) return false;
-        return true;
-    }
+    const getPasswordStrength = (pass) => {
+        if (!pass) return { score: 0, label: '', color: '' };
+        let score = 0;
+        if (pass.length >= 8) score += 1;
+        if (/[A-Z]/.test(pass)) score += 1;
+        if (/[a-z]/.test(pass)) score += 1;
+        if (/[0-9]/.test(pass)) score += 1;
+        if (/[!@#\$%\^&\*\(\)_\+\-=\[\]\{\}\|;:",\.<>\?/~`]/.test(pass)) score += 1;
+        
+        if (score <= 2) return { score, label: 'Weak', color: 'bg-red-500' };
+        if (score <= 4) return { score, label: 'Medium', color: 'bg-yellow-500' };
+        return { score, label: 'Strong', color: 'bg-green-500' };
+    };
+
+    const strength = getPasswordStrength(formData.password);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (!validatePassword(formData.password)) {
-            setError('Password must be at least 8 chars long with 1 uppercase, 1 lowercase, 1 number, and 1 special char (@ & * !)');
-            return;
+        if (strength.label === 'Weak' || strength.label === 'Medium') {
+            alert(`Your password is ${strength.label}. Please use a stronger password (8+ chars, upper, lower, number, special).`);
+            if (strength.score < 5) return;
         }
 
         setIsLoading(true);
@@ -42,6 +48,18 @@ const Register = () => {
         }
         setIsLoading(false);
     };
+
+    const ShowIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" height="15.6px" viewBox="0 -960 960 960" width="15.6px" fill="#64748b">
+            <path d="M160-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM80-200v-80h800v80H80Zm315-275q-35-35-35-85t35-85q35-35 85-35t85 35q35 35 35 85t-35 85q-35 35-85 35t-85-35Zm320 0q-35-35-35-85t35-85q35-35 85-35t85 35q35 35 35 85t-35 85q-35 35-85 35t-85-35Z"/>
+        </svg>
+    );
+
+    const HideIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" height="15.6px" viewBox="0 -960 960 960" width="15.6px" fill="#64748b">
+            <path d="M160-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm555-35q-35-35-35-85t35-85q35-35 85-35t85 35q35 35 35 85t-35 85q-35 35-85 35t-85-35Zm-135-19L414-660q14-10 31-15t35-5q50 0 85 35t35 85q0 18-5 35t-15 31ZM792-56 648-200H80v-80h488L56-792l56-56 736 736-56 56Z"/>
+        </svg>
+    );
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-tr from-slate-100 to-agri-50">
@@ -80,10 +98,10 @@ const Register = () => {
                             <input type="email" name="email" required className="input-field py-2.5" placeholder="farmer@example.com" value={formData.email} onChange={handleChange} />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-1">Role</label>
-                                <select name="role" value={formData.role} onChange={handleChange} className="input-field py-2.5 bg-white cursor-pointer">
+                                <select name="role" value={formData.role} onChange={handleChange} className="input-field py-2.5 bg-white cursor-pointer w-full">
                                     <option value="farmer">Farmer</option>
                                     <option value="shopkeeper">Shopkeeper</option>
                                 </select>
@@ -92,11 +110,28 @@ const Register = () => {
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
                                 <div className="relative">
-                                    <input type={showPassword ? 'text' : 'password'} name="password" required className="input-field py-2.5 pr-10" placeholder="••••••••" value={formData.password} onChange={handleChange} />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600">
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    <input type={showPassword ? 'text' : 'password'} name="password" required className="input-field py-2.5 pr-10 w-full" placeholder="••••••••" value={formData.password} onChange={handleChange} />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600">
+                                        {showPassword ? <HideIcon /> : <ShowIcon />}
                                     </button>
                                 </div>
+                                {formData.password && (
+                                    <div className="mt-2 text-xs font-medium">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-slate-500">Strength:</span>
+                                            <span className={strength.label === 'Strong' ? 'text-green-600' : strength.label === 'Medium' ? 'text-yellow-600' : 'text-red-600'}>
+                                                {strength.label}
+                                            </span>
+                                        </div>
+                                        <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                                            <motion.div 
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${(strength.score / 5) * 100}%` }}
+                                                className={`h-full ${strength.color}`} 
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
