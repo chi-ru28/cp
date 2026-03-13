@@ -4,19 +4,43 @@ let Reminder = null;
 
 const defineReminderModel = (sequelize) => {
     Reminder = sequelize.define('Reminder', {
-        id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-        userId: { type: DataTypes.INTEGER, allowNull: false },
-        title: { type: DataTypes.STRING, allowNull: false },
-        note: { type: DataTypes.TEXT, defaultValue: '' },
-        dateTime: { type: DataTypes.DATE, allowNull: false },
-        repeat: { type: DataTypes.ENUM('none', 'daily', 'weekly'), defaultValue: 'none' },
-        sent: { type: DataTypes.BOOLEAN, defaultValue: false },
-    }, { tableName: 'reminders', timestamps: true });
+        id: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true
+        },
+        farmerId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            field: 'farmer_id',
+            references: {
+                model: 'users',
+                key: 'id'
+            }
+        },
+        reminderType: {
+            type: DataTypes.STRING(50),
+            field: 'reminder_type'
+        },
+        message: {
+            type: DataTypes.TEXT,
+            allowNull: false
+        },
+        reminderDate: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: 'reminder_date'
+        }
+    }, {
+        tableName: 'reminders',
+        timestamps: true,
+        underscored: true
+    });
     return Reminder;
 };
 
 const getReminder = () => {
-    if (!Reminder) throw new Error('Reminder model not initialized. Call defineReminderModel() first.');
+    if (!Reminder) throw new Error('Reminder model not initialized.');
     return Reminder;
 };
 

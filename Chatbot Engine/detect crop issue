@@ -1,0 +1,27 @@
+def detect_crop_issue(message):
+    message = message.lower()
+
+    crops = [
+        "wheat","rice","maize","tomato","potato","onion",
+        "mango","banana","apple","orange","guava"
+    ]
+
+    symptoms = {
+        "yellow leaves": "nitrogen deficiency",
+        "purple leaves": "phosphorus deficiency",
+        "leaf edge burn": "potassium deficiency",
+        "slow growth": "nutrient deficiency"
+    }
+
+    crop = None
+    issue = None
+
+    for c in crops:
+        if c in message:
+            crop = c
+
+    for s in symptoms:
+        if s in message:
+            issue = symptoms[s]
+
+    return crop, issue

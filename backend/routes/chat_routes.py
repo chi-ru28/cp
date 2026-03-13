@@ -9,7 +9,7 @@ from database import get_db
 import models
 
 load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY", "agriassist_super_secret_key_2026")
+SECRET_KEY = os.getenv("JWT_SECRET", "thisisasupersecretkeythatshouldbelongandunguessable123!")
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -29,57 +29,67 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         if user_id is None:
             raise credentials_exception
         
-        return {"user_id": int(user_id), "role": role, "email": email}
+        return {"user_id": user_id, "role": role, "email": email}
     except JWTError:
         raise credentials_exception
 
 router = APIRouter()
 
-# GET ALL CHAT SESSIONS (Simplified to a single thread since session_id was removed from schema)
+# GET ALL CHAT SESSIONS
 @router.get("/sessions")
 async def get_sessions(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user_id = current_user.get("user_id")
 
-    # Get the latest message to show as title/updatedAt
-    latest_chat = db.query(models.ChatHistory).filter(models.ChatHistory.user_id == user_id).order_by(desc(models.ChatHistory.created_at)).first()
+    # Use a subquery or group by to get unique sessions
+    from sqlalchemy import func
+    sessions = db.query(
+        models.ChatHistory.session_id,
+        func.min(models.ChatHistory.message).label("first_message"),
+        func.max(models.ChatHistory.created_at).label("updated_at")
+    ).filter(models.ChatHistory.user_id == user_id).group_by(models.ChatHistory.session_id).order_by(desc("updated_at")).all()
     
-    if not latest_chat:
-        return {"sessions": []}
+    formatted = []
+    for s in sessions:
+        title = s.first_message or "New Chat"
+        if len(title) > 40:
+            title = title[:40] + "..."
+        formatted.append({
+            "sessionId": s.session_id,
+            "title": title,
+            "updatedAt": s.updated_at.isoformat() if s.updated_at else None
+        })
         
-    title = latest_chat.message
-    if len(title) > 30:
-        title = title[:30] + "..."
-        
-    return {"sessions": [{
-        "sessionId": "main",
-        "title": title,
-        "updatedAt": latest_chat.created_at.isoformat() if latest_chat.created_at else None
-    }]}
+    return {"sessions": formatted}
 
 # GET CHAT HISTORY
 @router.get("/history/{session_id}")
 async def get_history(session_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user_id = current_user.get("user_id")
 
-    chats = db.query(models.ChatHistory).filter(models.ChatHistory.user_id == user_id).order_by(models.ChatHistory.created_at).limit(100).all()
+    chats = db.query(models.ChatHistory).filter(
+        models.ChatHistory.user_id == user_id,
+        models.ChatHistory.session_id == session_id
+    ).order_by(models.ChatHistory.created_at).all()
     
     formatted_chats = []
     for chat in chats:
         formatted_chats.append({
             "id": str(chat.id),
-            "role": chat.role,
             "message": chat.message,
             "reply": chat.response,
             "timestamp": chat.created_at.isoformat() if chat.created_at else None
         })
         
-    return {"history": formatted_chats}
+    return {"history": formatted_chats, "sessionId": session_id}
 
 @router.delete("/history/{session_id}")
 async def clear_history(session_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user_id = current_user.get("user_id")
     
-    deleted_count = db.query(models.ChatHistory).filter(models.ChatHistory.user_id == user_id).delete()
+    deleted_count = db.query(models.ChatHistory).filter(
+        models.ChatHistory.user_id == user_id,
+        models.ChatHistory.session_id == session_id
+    ).delete()
     db.commit()
     
-    return {"message": "Session cleared", "deleted_count": deleted_count}
+    return {"message": "Session deleted", "deleted_count": deleted_count}

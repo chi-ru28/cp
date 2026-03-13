@@ -59,5 +59,8 @@
   "uploadImage": "છબી અપલોડ કરો",
   "weather": "હવામાન",
   "weatherLoading": "હવામાન લોડ થઈ રહ્યું છે...",
-  "settings": "સેટિંગ્સ"
+  "settings": "સેટિંગ્સ",
+  "organicAlternative": "જૈવિક વિકલ્પ",
+  "chemicalSolution": "રાસાયણિક ઉકેલ",
+  "precautionWarnings": "સાવચેતી ચેતવણી"
 }

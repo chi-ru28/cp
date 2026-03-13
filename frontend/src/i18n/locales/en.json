@@ -59,5 +59,8 @@
   "uploadImage": "Upload Image",
   "weather": "Weather",
   "weatherLoading": "Loading weather...",
-  "settings": "Settings"
+  "settings": "Settings",
+  "organicAlternative": "Organic Alternative",
+  "chemicalSolution": "Chemical Solution",
+  "precautionWarnings": "Precaution Warnings"
 }

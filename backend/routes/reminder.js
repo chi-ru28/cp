@@ -9,8 +9,8 @@ router.get('/', protect, async (req, res) => {
     try {
         const Reminder = getReminder();
         const reminders = await Reminder.findAll({
-            where: { userId: req.user.id },
-            order: [['dateTime', 'ASC']],
+            where: { farmerId: req.user.id },
+            order: [['reminderDate', 'ASC']],
         });
         res.json({ reminders });
     } catch (err) {
@@ -23,15 +23,14 @@ router.get('/', protect, async (req, res) => {
 router.post('/', protect, async (req, res) => {
     try {
         const Reminder = getReminder();
-        const { title, note, dateTime, repeat } = req.body;
-        if (!title || !dateTime) return res.status(400).json({ message: 'Title and dateTime are required.' });
+        const { reminderType, message, reminderDate } = req.body;
+        if (!message || !reminderDate) return res.status(400).json({ message: 'Message and reminderDate are required.' });
 
         const reminder = await Reminder.create({
-            userId: req.user.id,
-            title, note: note || '',
-            dateTime: new Date(dateTime),
-            repeat: repeat || 'none',
-            sent: false,
+            farmerId: req.user.id,
+            reminderType: reminderType || 'General',
+            message,
+            reminderDate: new Date(reminderDate)
         });
         res.status(201).json({ reminder });
     } catch (err) {
@@ -44,7 +43,7 @@ router.post('/', protect, async (req, res) => {
 router.delete('/:id', protect, async (req, res) => {
     try {
         const Reminder = getReminder();
-        const deleted = await Reminder.destroy({ where: { id: req.params.id, userId: req.user.id } });
+        const deleted = await Reminder.destroy({ where: { id: req.params.id, farmerId: req.user.id } });
         if (!deleted) return res.status(404).json({ message: 'Reminder not found.' });
         res.json({ message: 'Reminder deleted.' });
     } catch (err) {

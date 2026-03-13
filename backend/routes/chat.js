@@ -6,6 +6,7 @@ const { protect } = require('../middleware/auth');
 const { getChatHistory } = require('../models/ChatHistory');
 const { generateReply, detectLanguage, isGreeting } = require('../services/gemini');
 const { getWeather } = require('../services/weather');
+const axios = require('axios');
 
 // POST /api/chat/ — Send message, get AI reply
 router.post('/', protect, async (req, res) => {
@@ -30,9 +31,9 @@ router.post('/', protect, async (req, res) => {
                 : '👨‍🌾 Welcome to AgriAssist!\n\n1️⃣ Detect crop issue\n2️⃣ Fertilizer advice\n3️⃣ Tool suggestions\n4️⃣ Check weather impact\n5️⃣ View history\n\nWhat can I help you with today?';
 
             await ChatHistory.create({
-                userId, sessionId: currentSessionId, role,
-                message: trimmedMessage, reply: menu,
-                timestamp: new Date()
+                userId, sessionId: currentSessionId,
+                message: trimmedMessage, response: menu,
+                intent: 'greeting', language
             });
 
             return res.json({ reply: menu, sessionId: currentSessionId, language });
@@ -53,19 +54,36 @@ router.post('/', protect, async (req, res) => {
         });
 
         const historyText = pastChats.length > 0
-            ? pastChats.reverse().map(c => `User: ${c.message}\nAssistant: ${c.reply}`).join('\n\n')
+            ? pastChats.reverse().map(c => `User: ${c.message}\nAssistant: ${c.response}`).join('\n\n')
             : '';
 
-        // Generate AI reply
-        const aiReply = await generateReply({ role, message: trimmedMessage, historyText, weatherInfo, language, imageBase64, imageMimeType });
-
-        const finalReply = aiReply || '🙏 I\'m having trouble connecting to the AI right now. Please try again shortly.';
+        // Generate AI reply using Python FastAPI Engine
+        let finalReply = '🙏 I\'m having trouble connecting to the AI right now. Please try again shortly.';
+        try {
+            const pythonResponse = await axios.post('http://127.0.0.1:8000/api/chat', {
+                message: trimmedMessage,
+                sessionId: currentSessionId,
+                role: role,
+                location: location
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: 20000 // 20s timeout for deep DB lookups
+            });
+            
+            if (pythonResponse.data && pythonResponse.data.response) {
+                finalReply = pythonResponse.data.response;
+            }
+        } catch (pyError) {
+            console.error('Failed to reach Python Chatbot Engine at 8000:', pyError.message);
+        }
 
         // Save to PostgreSQL
         await ChatHistory.create({
-            userId, sessionId: currentSessionId, role,
-            message: trimmedMessage, reply: finalReply,
-            timestamp: new Date()
+            userId, sessionId: currentSessionId,
+            message: trimmedMessage, response: finalReply,
+            intent: 'query', language
         });
 
         res.json({ reply: finalReply, sessionId: currentSessionId, language, weather: weatherInfo });
@@ -126,9 +144,8 @@ router.get('/history/:sessionId', protect, async (req, res) => {
         const history = chats.map(c => ({
             id: c.id,
             message: c.message,
-            reply: c.reply,
-            role: c.role,
-            timestamp: c.timestamp
+            reply: c.response,
+            timestamp: c.createdAt
         }));
 
         res.json({ history, sessionId });

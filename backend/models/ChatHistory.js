@@ -19,29 +19,29 @@ const defineChatHistoryModel = (sequelize) => {
             allowNull: false,
             field: 'session_id'
         },
-        role: {
-            type: DataTypes.STRING(20),
-            defaultValue: 'farmer'
-        },
         message: {
             type: DataTypes.TEXT,
             allowNull: false
         },
-        reply: {
+        response: {
             type: DataTypes.TEXT,
             allowNull: false
         },
-        timestamp: {
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW
+        intent: {
+            type: DataTypes.STRING(100),
+            allowNull: true
+        },
+        language: {
+            type: DataTypes.STRING(10),
+            defaultValue: 'en'
         }
     }, {
-        tableName: 'chat_histories',
-        timestamps: false,
+        tableName: 'chat_history',
+        timestamps: true,
+        underscored: true,
         indexes: [
             { fields: ['user_id'] },
-            { fields: ['session_id'] },
-            { fields: ['user_id', 'session_id'] }
+            { fields: ['session_id'] }
         ]
     });
 

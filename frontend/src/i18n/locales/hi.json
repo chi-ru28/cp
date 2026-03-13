@@ -59,5 +59,8 @@
   "uploadImage": "छवि अपलोड करें",
   "weather": "मौसम",
   "weatherLoading": "मौसम लोड हो रहा है...",
-  "settings": "सेटिंग्स"
+  "settings": "सेटिंग्स",
+  "organicAlternative": "जैविक विकल्प",
+  "chemicalSolution": "रासायनिक समाधान",
+  "precautionWarnings": "सावधानी चेतावनी"
 }

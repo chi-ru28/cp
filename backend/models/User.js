@@ -21,37 +21,43 @@ const defineUserModel = (sequelize) => {
             unique: true,
             validate: { isEmail: true }
         },
-        password: {
+        phone: {
+            type: DataTypes.STRING(20),
+            allowNull: true
+        },
+        passwordHash: {
             type: DataTypes.STRING(255),
-            allowNull: false
+            allowNull: false,
+            field: 'password_hash'
         },
         role: {
             type: DataTypes.ENUM('farmer', 'shopkeeper', 'admin'),
             defaultValue: 'farmer'
         },
-        preferredLanguage: {
-            type: DataTypes.ENUM('en', 'hi', 'gu'),
-            defaultValue: 'en'
+        location: {
+            type: DataTypes.STRING(255),
+            allowNull: true
         }
     }, {
         tableName: 'users',
-        timestamps: true
+        timestamps: true,
+        underscored: true
     });
 
     User.beforeCreate(async (user) => {
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
+        user.passwordHash = await bcrypt.hash(user.passwordHash, salt);
     });
 
     User.beforeUpdate(async (user) => {
-        if (user.changed('password')) {
+        if (user.changed('passwordHash')) {
             const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(user.password, salt);
+            user.passwordHash = await bcrypt.hash(user.passwordHash, salt);
         }
     });
 
     User.prototype.matchPassword = async function (enteredPassword) {
-        return await bcrypt.compare(enteredPassword, this.password);
+        return await bcrypt.compare(enteredPassword, this.passwordHash);
     };
 
     return User;

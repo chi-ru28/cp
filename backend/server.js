@@ -8,6 +8,7 @@ const chatRoutes    = require('./routes/chat');
 const shopRoutes    = require('./routes/shop');
 const reminderRoutes = require('./routes/reminder');
 const weatherRoutes = require('./routes/weather');
+const cropAnalysisRoutes = require('./routes/cropAnalysis');
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/chat',     chatRoutes);
 app.use('/api/shop',     shopRoutes);
 app.use('/api/reminder', reminderRoutes);
 app.use('/api/weather',  weatherRoutes);
+app.use('/api/analysis', cropAnalysisRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {
@@ -104,4 +106,3 @@ if (require.main === module || process.env.NODE_ENV === 'development') {
     // In serverless, ensure DB is connected
     connectDB().catch(err => console.error('DB connection error in serverless:', err.message));
 }
-

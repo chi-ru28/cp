@@ -34,7 +34,15 @@ const connectDB = async () => {
     db.initializationPromise = (async () => {
         const { defineUserModel } = require('../models/User');
         const { defineChatHistoryModel } = require('../models/ChatHistory');
-        const { defineProductModel } = require('../models/Product');
+        const { defineCropModel } = require('../models/Crop');
+        const { defineFertilizerTypeModel } = require('../models/FertilizerType');
+        const { defineCropFertilizerMappingModel } = require('../models/CropFertilizerMapping');
+        const { defineSoilDeficiencyModel } = require('../models/SoilDeficiency');
+        const { definePesticideSolutionModel } = require('../models/PesticideSolution');
+        const { defineFarmingToolModel } = require('../models/FarmingTool');
+        const { defineCropIssueReportModel } = require('../models/CropIssueReport');
+        const { defineFertilizerKnowledgeModel } = require('../models/FertilizerKnowledge');
+        const { defineShopInventoryModel } = require('../models/ShopInventory');
         const { defineReminderModel } = require('../models/Reminder');
 
         const DATABASE_URL = process.env.DATABASE_URL;
@@ -85,7 +93,15 @@ const connectDB = async () => {
         // C. Define Models
         defineUserModel(sequelize);
         defineChatHistoryModel(sequelize);
-        defineProductModel(sequelize);
+        defineCropModel(sequelize);
+        defineFertilizerTypeModel(sequelize);
+        defineCropFertilizerMappingModel(sequelize);
+        defineSoilDeficiencyModel(sequelize);
+        definePesticideSolutionModel(sequelize);
+        defineFarmingToolModel(sequelize);
+        defineCropIssueReportModel(sequelize);
+        defineFertilizerKnowledgeModel(sequelize);
+        defineShopInventoryModel(sequelize);
         defineReminderModel(sequelize);
 
         // D. Sync (Only if not in restricted env or if tables missing)

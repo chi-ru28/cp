@@ -1,84 +1,141 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum, Text, DateTime, Numeric
+from sqlalchemy import Column, String, Boolean, ForeignKey, Enum, Text, DateTime, Numeric, Integer
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
+import uuid
 from database import Base
-
-class RoleEnum(str, enum.Enum):
-    farmer = "farmer"
-    shopkeeper = "shopkeeper"
-
-class ProductTypeEnum(str, enum.Enum):
-    fertilizer = "fertilizer"
-    pesticide = "pesticide"
-    tool = "tool"
-
-class CategoryEnum(str, enum.Enum):
-    organic = "organic"
-    chemical = "chemical"
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     phone = Column(String(20), nullable=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.farmer)
+    role = Column(String(20), nullable=False, default="farmer")
     location = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    chat_history = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
-    shop_inventory = relationship("ShopInventory", back_populates="shopkeeper", cascade="all, delete-orphan")
-    reminders = relationship("Reminder", back_populates="user", cascade="all, delete-orphan")
+class Crop(Base):
+    __tablename__ = "crops"
 
-class ChatHistory(Base):
-    __tablename__ = "chat_history"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    crop_name = Column(String(100), unique=True, nullable=False, index=True)
+    category = Column(String(255))
+    growing_season = Column(String(255))
+    soil_type = Column(Text)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    role = Column(String(50), nullable=False) # 'user' or 'ai'
-    message = Column(Text, nullable=False)
-    response = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+class FertilizerType(Base):
+    __tablename__ = "fertilizer_types"
 
-    user = relationship("User", back_populates="chat_history")
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fertilizer_name = Column(String(255), unique=True, nullable=False, index=True)
+    category = Column(String(255)) # organic / chemical
+    main_nutrients = Column(String(255))
+    description = Column(Text)
+    usage_warning = Column(Text)
+
+class CropFertilizerMapping(Base):
+    __tablename__ = "crop_fertilizer_mapping"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    crop_id = Column(UUID(as_uuid=True), ForeignKey("crops.id", ondelete="CASCADE"), nullable=False)
+    fertilizer_id = Column(UUID(as_uuid=True), ForeignKey("fertilizer_types.id", ondelete="CASCADE"), nullable=False)
+    recommended_quantity = Column(String(100))
+    application_stage = Column(String(255))
+    application_method = Column(Text)
+
+class SoilDeficiency(Base):
+    __tablename__ = "soil_deficiency"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deficiency_name = Column(String(255), nullable=False, index=True)
+    symptoms = Column(Text)
+    recommended_fertilizer = Column(Text)
+    organic_solution = Column(Text)
+    chemical_solution = Column(Text)
+    precautions = Column(Text)
+
+class PesticideSolution(Base):
+    __tablename__ = "pesticide_solutions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    crop_id = Column(UUID(as_uuid=True), ForeignKey("crops.id", ondelete="CASCADE"))
+    pest_name = Column(String(255), nullable=False)
+    organic_pesticide = Column(String(255))
+    chemical_pesticide = Column(String(255))
+    application_method = Column(Text)
+    safety_warning = Column(Text)
+
+class FarmingTool(Base):
+    __tablename__ = "farming_tools"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tool_name = Column(String(255), nullable=False, index=True)
+    tool_category = Column(String(100))
+    recommended_crop = Column(Text)
+    description = Column(Text)
+    purchase_link = Column(String(500))
+
+class CropIssueReport(Base):
+    __tablename__ = "crop_issue_reports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    farmer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    crop_name = Column(String(100))
+    issue_description = Column(Text)
+    detected_problem = Column(Text)
+    recommended_fertilizer = Column(Text)
+    organic_solution = Column(Text)
+    chemical_solution = Column(Text)
+    reference_link = Column(String(500))
+    report_generated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class ShopInventory(Base):
     __tablename__ = "shop_inventory"
 
-    id = Column(Integer, primary_key=True, index=True)
-    shopkeeper_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shopkeeper_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     product_name = Column(String(255), nullable=False)
-    product_type = Column(Enum(ProductTypeEnum), nullable=False)
-    category = Column(Enum(CategoryEnum), nullable=False)
-    quantity_available = Column(Integer, nullable=False, default=0)
+    category = Column(String(50), nullable=False)
+    type = Column(String(20), nullable=False)
+    quantity_available = Column(Numeric, default=0)
     price = Column(Numeric(10, 2), nullable=False)
-    availability = Column(Boolean, nullable=False, default=True)
+    availability = Column(Boolean, default=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+class ChatHistory(Base):
+    __tablename__ = "chat_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(String(36), nullable=False, index=True)
+    message = Column(Text, nullable=False)
+    response = Column(Text, nullable=False)
+    intent = Column(String(100), nullable=True)
+    language = Column(String(10), default="en")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    shopkeeper = relationship("User", back_populates="shop_inventory")
+class FertilizerKnowledge(Base):
+    __tablename__ = "fertilizer_knowledge"
 
-class CropAdvisory(Base):
-    __tablename__ = "crop_advisory"
-
-    id = Column(Integer, primary_key=True, index=True)
-    crop_name = Column(String(255), nullable=False, index=True)
-    fertilizer_recommendation = Column(Text, nullable=True)
-    pesticide_recommendation = Column(Text, nullable=True)
-    irrigation_advice = Column(Text, nullable=True)
-    weather_advice = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plant_name = Column(String(100), index=True)
+    plant_type = Column(String(50))
+    issue = Column(String(255))
+    recommended_fertilizer = Column(String(255))
+    organic_alternative = Column(String(255))
+    application_stage = Column(String(255))
+    precaution = Column(Text)
 
 class Reminder(Base):
     __tablename__ = "reminders"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    reminder_type = Column(String(50), nullable=False) # 'fertilizer' / 'irrigation' / 'pesticide'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    farmer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    reminder_type = Column(String(50), nullable=True)
     message = Column(Text, nullable=False)
     reminder_date = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    user = relationship("User", back_populates="reminders")

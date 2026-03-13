@@ -4,8 +4,9 @@ import remarkGfm from 'remark-gfm';
 import { CheckCircle, AlertTriangle, MapPin, Leaf, Package, FileText, Copy, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-// Try to parse structured JSON report from AI reply
+// Try to parse structured report from AI reply (either JSON or Plain Text)
 const parseReport = (text) => {
+    // 1. Try JSON first
     try {
         const match = text.match(/```json\s*([\s\S]*?)```/);
         if (match) {
@@ -13,6 +14,18 @@ const parseReport = (text) => {
             if (parsed.type === 'report') return parsed;
         }
     } catch { /* not JSON */ }
+
+    // 2. Try Plain Text Structured Format (Diagnosis:, etc.)
+    if (text.includes('Diagnosis:')) {
+        const sections = ['Diagnosis', 'Recommended Fertilizer', 'Organic Alternative', 'Chemical Solution', 'Precaution Warnings', 'Reference Links'];
+        const report = {};
+        sections.forEach(s => {
+            const regex = new RegExp(`${s}:\\s*([\\s\\S]*?)(?=\\n\\w+:|$)`, 'i');
+            const m = text.match(regex);
+            if (m) report[s.toLowerCase().replace(/ /g, '_')] = m[1].trim();
+        });
+        if (Object.keys(report).length > 0) return report;
+    }
     return null;
 };
 
@@ -21,60 +34,48 @@ const severityColor = { Low: 'text-green-600 bg-green-50', Medium: 'text-yellow-
 export const ReportCard = ({ report }) => {
     const { t } = useTranslation();
     return (
-        <div id="agri-report-card" className="space-y-3 text-sm">
+        <div id="agri-report-card" className="space-y-4 text-sm mt-2">
             {/* Diagnosis */}
-            <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <div className="flex items-center gap-2 font-semibold text-blue-800 mb-1">
-                    <CheckCircle size={16} /> Diagnosis
+            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
+                <div className="flex items-center gap-2 font-bold text-blue-800 mb-2">
+                    <CheckCircle size={18} className="text-blue-600" /> Diagnosis
                 </div>
-                <p className="text-blue-700">{report.diagnosis}</p>
-                {report.severity && (
-                    <span className={`mt-2 inline-block text-xs font-bold px-2 py-0.5 rounded-full ${severityColor[report.severity] || 'text-slate-600 bg-slate-100'}`}>
-                        Severity: {report.severity}
+                <p className="text-blue-700 leading-relaxed">{report.diagnosis}</p>
+            </div>
+
+            {/* Recommendations */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm">
+                    <div className="flex items-center gap-2 font-bold text-emerald-800 mb-2">
+                        <Leaf size={18} className="text-emerald-600" /> {t('organicAlternative') || 'Organic Alternative'}
+                    </div>
+                    <p className="text-emerald-700">{report.organic_alternative || report.recommendation}</p>
+                </div>
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 shadow-sm">
+                    <div className="flex items-center gap-2 font-bold text-amber-800 mb-2">
+                        <Package size={18} className="text-amber-600" /> {t('chemicalSolution') || 'Chemical Solution'}
+                    </div>
+                    <p className="text-amber-700">{report.chemical_solution || 'Not provided'}</p>
+                </div>
+            </div>
+
+            {/* Warnings */}
+            {report.precaution_warnings && (
+                <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 shadow-sm">
+                    <div className="flex items-center gap-2 font-bold text-rose-700 mb-2">
+                        <AlertTriangle size={18} className="text-rose-600" /> {t('precautionWarnings') || 'Safety Warnings'}
+                    </div>
+                    <p className="text-rose-600 italic">{report.precaution_warnings}</p>
+                </div>
+            )}
+
+            {/* Links */}
+            {report.reference_links && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                        <FileText size={12} /> References:
                     </span>
-                )}
-            </div>
-
-            {/* Recommendation + Dosage */}
-            <div className="p-3 bg-green-50 rounded-xl border border-green-100">
-                <div className="flex items-center gap-2 font-semibold text-green-800 mb-1">
-                    <Leaf size={16} /> Recommendation & Dosage
-                </div>
-                <p className="text-green-700">{report.recommendation}</p>
-                {report.dosage && <p className="text-green-600 mt-1 text-xs">📏 {report.dosage}</p>}
-            </div>
-
-            {/* Alternatives */}
-            {report.alternatives?.length > 0 && (
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
-                    <div className="flex items-center gap-2 font-semibold text-amber-800 mb-1">
-                        <Package size={16} /> Alternatives
-                    </div>
-                    <ul className="list-disc list-inside text-amber-700 space-y-0.5">
-                        {report.alternatives.map((a, i) => <li key={i}>{a}</li>)}
-                    </ul>
-                </div>
-            )}
-
-            {/* Purchase Locations */}
-            {report.purchaseLocations?.length > 0 && (
-                <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
-                    <div className="flex items-center gap-2 font-semibold text-purple-800 mb-1">
-                        <MapPin size={16} /> Where to Buy
-                    </div>
-                    <ul className="list-disc list-inside text-purple-700 space-y-0.5">
-                        {report.purchaseLocations.map((p, i) => <li key={i}>{p}</li>)}
-                    </ul>
-                </div>
-            )}
-
-            {/* Warning */}
-            {report.warning && (
-                <div className="p-3 bg-red-50 rounded-xl border border-red-100">
-                    <div className="flex items-center gap-2 font-semibold text-red-700 mb-1">
-                        <AlertTriangle size={16} /> Warning
-                    </div>
-                    <p className="text-red-600">{report.warning}</p>
+                    <p className="text-xs text-blue-500 underline cursor-pointer truncate max-w-xs">{report.reference_links}</p>
                 </div>
             )}
         </div>

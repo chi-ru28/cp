@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import {
     Send, Image as ImageIcon, Mic, MicOff, LogOut, Sprout,
-    Menu, X, Trash2, Plus, MessageSquare, Globe
+    Menu, X, Trash2, Plus, MessageSquare, Globe, Check, Leaf, FileText
 } from 'lucide-react';
 import ChatMessage from '../components/chat/ChatMessage';
 import ReminderBell from '../components/chat/ReminderBell';
@@ -22,7 +22,11 @@ const LANG_OPTIONS = [
 
 const ChatInterface = () => {
     const { user, logout } = useAuth();
-    const { messages, sendMessage, isTyping, sessions, loadSessions, loadHistory, clearHistory, createNewChat, activeSessionId } = useChatContext();
+    const { 
+        messages, sendMessage, isTyping, sessions, loadSessions, 
+        loadHistory, clearHistory, createNewChat, activeSessionId,
+        analyses, loadAnalyses, deleteAnalysis
+    } = useChatContext();
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
 
@@ -34,6 +38,8 @@ const ChatInterface = () => {
     const [imageMimeType, setImageMimeType] = useState(null);
     const [currentLang, setCurrentLang] = useState(localStorage.getItem('agri_lang') || 'en');
     const [showLangMenu, setShowLangMenu] = useState(false);
+    const [viewMode, setViewMode] = useState('chat'); // 'chat' or 'analysis'
+    const [confirmDelete, setConfirmDelete] = useState(null); // sessionId to confirm
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -43,6 +49,7 @@ const ChatInterface = () => {
     useEffect(() => {
         if (!user) { navigate('/login'); return; }
         loadSessions();
+        loadAnalyses();
         if (!activeSessionId) createNewChat();
     }, [user]);
 
@@ -149,14 +156,32 @@ const ChatInterface = () => {
                                 <MessageSquare size={14} className="shrink-0 mr-2.5 opacity-60" />
                                 <span className="text-sm truncate flex-1">{s.title}</span>
                                 {activeSessionId === s.sessionId && (
-                                    <button onClick={e => { e.stopPropagation(); clearHistory(s.sessionId); }}
+                                    <button onClick={e => { e.stopPropagation(); setConfirmDelete(s.sessionId); }}
                                         className="opacity-0 group-hover:opacity-100 ml-1 p-1 text-slate-400 hover:text-red-500 rounded transition-all">
                                         <Trash2 size={12} />
                                     </button>
                                 )}
+                                {confirmDelete === s.sessionId && (
+                                    <div className="absolute right-0 top-0 bottom-0 bg-white shadow-lg rounded-lg flex items-center gap-1 px-2 z-10 border border-red-100 animate-in fade-in slide-in-from-right-2">
+                                        <span className="text-[10px] font-bold text-red-500 uppercase">Confirm?</span>
+                                        <button onClick={e => { e.stopPropagation(); clearHistory(s.sessionId); setConfirmDelete(null); }} className="p-1 text-red-600 hover:bg-red-50 rounded"><Check size={12} /></button>
+                                        <button onClick={e => { e.stopPropagation(); setConfirmDelete(null); }} className="p-1 text-slate-400 hover:bg-slate-50 rounded"><X size={12} /></button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
+
+                    {/* Analysis Reports Link */}
+                    {user?.role === 'farmer' && (
+                        <div className="mt-4 pt-4 border-t border-slate-100">
+                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">Analytics</p>
+                             <button onClick={() => { setViewMode(viewMode === 'analysis' ? 'chat' : 'analysis'); setSidebarOpen(false); }} 
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold text-sm ${viewMode === 'analysis' ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}>
+                                <Leaf size={16} /> {viewMode === 'analysis' ? 'Back to Chat' : 'Crop Analysis History'}
+                             </button>
+                        </div>
+                    )}
 
                     {/* User footer */}
                     <div className="pt-4 border-t border-slate-100 mt-auto">
@@ -212,36 +237,83 @@ const ChatInterface = () => {
                     </div>
                 </header>
 
-                {/* Messages */}
+                {/* Main Content */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-36 scroll-smooth w-full">
-                    <div className="max-w-4xl mx-auto space-y-4">
-                        {messages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center pt-16 text-center">
-                                <Sprout size={56} className="text-agri-400 mb-4" />
-                                <h3 className="text-2xl font-bold text-slate-700">{t('howCanIHelp')}</h3>
-                                <p className="text-slate-400 mt-2 mb-8">{t('emptyChatSubtitle')}</p>
-                                <div className="flex flex-wrap gap-2 justify-center">
-                                    {QUICK_CHIPS.map(chip => (
-                                        <button key={chip.key} onClick={() => { setInput(chip.msg); }}
-                                            className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm text-slate-600 hover:border-agri-400 hover:text-agri-600 hover:bg-agri-50 transition-all shadow-sm font-medium">
-                                            {t(chip.key)}
-                                        </button>
+                    <div className="max-w-4xl mx-auto">
+                        <AnimatePresence mode="wait">
+                            {viewMode === 'chat' ? (
+                                <motion.div key="chat" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
+                                    {messages.length === 0 && (
+                                        <div className="flex flex-col items-center justify-center pt-16 text-center">
+                                            <div className="w-20 h-20 bg-agri-100 rounded-3xl flex items-center justify-center text-agri-600 mb-6 shadow-sm"><Sprout size={40} /></div>
+                                            <h3 className="text-2xl font-bold text-slate-800">{t('howCanIHelp')}</h3>
+                                            <p className="text-slate-400 mt-2 mb-10 max-w-sm mx-auto">{t('emptyChatSubtitle')}</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full px-4">
+                                                {QUICK_CHIPS.map(chip => (
+                                                    <button key={chip.key} onClick={() => { setInput(chip.msg); }}
+                                                        className="px-5 py-3 bg-white border border-slate-200 rounded-2xl text-left text-sm text-slate-700 hover:border-agri-400 hover:text-agri-700 hover:bg-agri-50 transition-all shadow-sm group">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="font-semibold">{t(chip.key)}</span>
+                                                            <Plus size={14} className="text-slate-300 group-hover:text-agri-500" />
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {messages.map((msg, idx) => (
+                                        <ChatMessage key={idx} msg={msg} onSpeak={(text) => speak(text)} />
                                     ))}
-                                </div>
-                            </div>
-                        )}
-                        {messages.map((msg, idx) => (
-                            <ChatMessage key={idx} msg={msg} onSpeak={(text) => speak(text)} />
-                        ))}
-                        {isTyping && (
-                            <div className="flex justify-start">
-                                <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm p-4 w-20 flex gap-1 justify-center shadow-md">
-                                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                                </div>
-                            </div>
-                        )}
+                                    {isTyping && (
+                                        <div className="flex justify-start">
+                                            <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm p-4 w-20 flex gap-1 justify-center shadow-md">
+                                                <span className="w-2 h-2 rounded-full bg-agri-300 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                <span className="w-2 h-2 rounded-full bg-agri-300 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                <span className="w-2 h-2 rounded-full bg-agri-300 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            ) : (
+                                <motion.div key="analysis" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h2 className="text-2xl font-bold text-slate-800">Crop Health Analysis</h2>
+                                        <button onClick={() => setViewMode('chat')} className="text-sm text-indigo-600 font-semibold hover:underline">Back to Chat</button>
+                                    </div>
+                                    {analyses.length === 0 ? (
+                                        <div className="py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
+                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-4"><FileText size={32} /></div>
+                                            <p className="text-slate-500 font-medium">No saved analytics yet. Ask the AI to analyze your crop issue!</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {analyses.map((report, idx) => (
+                                                <motion.div key={idx} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600"><Leaf size={20} /></div>
+                                                            <div>
+                                                                <h4 className="font-bold text-slate-800 line-clamp-1">{report.detected_problem || report.detected_issue || report.diagnosis}</h4>
+                                                                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">{new Date(report.report_generated_at || report.created_at || report.createdAt).toLocaleDateString()}</p>
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={() => deleteAnalysis(report.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                                        <div className="p-3 bg-emerald-50 rounded-xl text-xs"><span className="font-bold text-emerald-800 block mb-1">Organic</span><p className="text-emerald-700">{report.organic_solution || report.organicAlternative}</p></div>
+                                                        <div className="p-3 bg-amber-50 rounded-xl text-xs"><span className="font-bold text-amber-800 block mb-1">Chemical</span><p className="text-amber-700">{report.chemical_solution || report.chemicalSolution}</p></div>
+                                                    </div>
+                                                    <button onClick={() => { setViewMode('chat'); sendMessage(`Show details for my ${report.detected_issue || report.diagnosis} analysis`); }}
+                                                        className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-sm font-bold transition-all border border-slate-100">
+                                                        Re-discuss in Chat
+                                                    </button>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                         <div ref={messagesEndRef} />
                     </div>
                 </div>

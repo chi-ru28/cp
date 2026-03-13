@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { getProduct } = require('../models/Product');
+const { getShopInventory } = require('../models/ShopInventory');
 
 // GET /api/shop/inventory — list products for the authenticated shopkeeper
 router.get('/inventory', protect, async (req, res) => {
     try {
-        const Product = getProduct();
-        const products = await Product.findAll({
-            where: { userId: req.user.id },
-            order: [['category', 'ASC'], ['name', 'ASC']],
+        const ShopInventory = getShopInventory();
+        const products = await ShopInventory.findAll({
+            where: { shopkeeperId: req.user.id },
+            order: [['category', 'ASC'], ['productName', 'ASC']],
         });
         res.json({ products });
     } catch (err) {
@@ -21,18 +21,18 @@ router.get('/inventory', protect, async (req, res) => {
 // POST /api/shop/inventory — add a new product
 router.post('/inventory', protect, async (req, res) => {
     try {
-        const Product = getProduct();
-        const { name, category, unit, price, stock, available, description } = req.body;
-        if (!name) return res.status(400).json({ message: 'Product name is required.' });
+        const ShopInventory = getShopInventory();
+        const { productName, category, type, price, quantityAvailable, availability } = req.body;
+        if (!productName) return res.status(400).json({ message: 'Product name is required.' });
 
-        const product = await Product.create({
-            userId: req.user.id,
-            name, category: category || 'chemical',
-            unit: unit || 'kg',
+        const product = await ShopInventory.create({
+            shopkeeperId: req.user.id,
+            productName,
+            category: category || 'fertilizer',
+            type: type || 'chemical',
             price: price || 0,
-            stock: stock || 0,
-            available: available !== undefined ? available : true,
-            description: description || '',
+            quantityAvailable: quantityAvailable || 0,
+            availability: availability !== undefined ? availability : true
         });
         res.status(201).json({ product });
     } catch (err) {
@@ -44,8 +44,8 @@ router.post('/inventory', protect, async (req, res) => {
 // PUT /api/shop/inventory/:id — update a product
 router.put('/inventory/:id', protect, async (req, res) => {
     try {
-        const Product = getProduct();
-        const product = await Product.findOne({ where: { id: req.params.id, userId: req.user.id } });
+        const ShopInventory = getShopInventory();
+        const product = await ShopInventory.findOne({ where: { id: req.params.id, shopkeeperId: req.user.id } });
         if (!product) return res.status(404).json({ message: 'Product not found.' });
 
         await product.update(req.body);
@@ -59,8 +59,8 @@ router.put('/inventory/:id', protect, async (req, res) => {
 // DELETE /api/shop/inventory/:id — delete a product
 router.delete('/inventory/:id', protect, async (req, res) => {
     try {
-        const Product = getProduct();
-        const deleted = await Product.destroy({ where: { id: req.params.id, userId: req.user.id } });
+        const ShopInventory = getShopInventory();
+        const deleted = await ShopInventory.destroy({ where: { id: req.params.id, shopkeeperId: req.user.id } });
         if (!deleted) return res.status(404).json({ message: 'Product not found.' });
         res.json({ message: 'Product deleted.' });
     } catch (err) {

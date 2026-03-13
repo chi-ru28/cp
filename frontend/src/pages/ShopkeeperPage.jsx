@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useChatContext, ChatProvider } from '../context/ChatContext';
-import { Sprout, LogOut, Plus, Trash2, Edit3, X, Check, Package, MessageSquare, Send, Menu } from 'lucide-react';
+import { Sprout, LogOut, Plus, Trash2, Edit3, X, Check, Package, MessageSquare, Send, Menu, Mic, MicOff } from 'lucide-react';
+import useVoice from '../hooks/useVoice';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import ChatMessage from '../components/chat/ChatMessage';
@@ -141,13 +142,28 @@ const ShopkeeperChat = () => {
     const { messages, sendMessage, isTyping } = useChatContext();
     const { t } = useTranslation();
     const [input, setInput] = useState('');
+    const [voiceEnabled, setVoiceEnabled] = useState(true);
     const messagesEndRef = React.useRef(null);
+    const { listening, startListening, stopListening, speak } = useVoice('en');
 
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+
+    // Auto-speak AI replies
+    useEffect(() => {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg?.sender === 'ai' && voiceEnabled) {
+            speak(lastMsg.text);
+        }
+    }, [messages]);
 
     const handleSend = (e) => {
         e?.preventDefault();
         if (input.trim()) { sendMessage(input.trim()); setInput(''); }
+    };
+
+    const toggleVoice = () => {
+        if (listening) stopListening();
+        else startListening(transcript => setInput(prev => prev ? prev + ' ' + transcript : transcript));
     };
 
     return (
@@ -166,9 +182,15 @@ const ShopkeeperChat = () => {
                 {isTyping && <div className="flex gap-1 p-3"><span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" /><span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '150ms' }} /><span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '300ms' }} /></div>}
                 <div ref={messagesEndRef} />
             </div>
-            <form onSubmit={handleSend} className="flex gap-2 mt-3 shrink-0">
-                <input className="flex-1 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-agri-300 bg-white"
-                    placeholder="Ask about your inventory..." value={input} onChange={e => setInput(e.target.value)} />
+            <form onSubmit={handleSend} className="flex gap-2 mt-3 shrink-0 items-end">
+                <button type="button" onClick={toggleVoice}
+                    className={`p-2.5 rounded-xl transition-all ${listening ? 'bg-red-50 text-red-500 animate-pulse' : 'bg-slate-50 text-slate-400 hover:bg-agri-50 hover:text-agri-600'}`}>
+                    {listening ? <MicOff size={18} /> : <Mic size={18} />}
+                </button>
+                <textarea rows={1} className="flex-1 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-agri-300 bg-white resize-none self-center"
+                    placeholder={listening ? "Listening..." : "Ask about your inventory..."} value={input} onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }}} />
+                <button type="button" onClick={() => setVoiceEnabled(!voiceEnabled)} className={`p-2 rounded-xl text-xs ${voiceEnabled ? 'text-agri-600 bg-agri-50' : 'text-slate-400 bg-slate-50'}`}>🔊</button>
                 <button type="submit" disabled={!input.trim() || isTyping}
                     className="p-2.5 bg-agri-500 text-white rounded-xl hover:bg-agri-600 disabled:bg-slate-200 transition-colors">
                     <Send size={18} />

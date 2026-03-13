@@ -1,0 +1,16 @@
+def query_fertilizer_database(db, crop):
+    query = """
+    SELECT f.fertilizer_name,
+           f.main_nutrients,
+           m.recommended_quantity_per_acre,
+           m.application_stage
+    FROM crops c
+    JOIN crop_fertilizer_mapping m
+    ON c.id = m.crop_id
+    JOIN fertilizer_types f
+    ON m.fertilizer_id = f.id
+    WHERE LOWER(c.crop_name) = LOWER(%s)
+    """
+
+    result = db.execute(query, (crop,))
+    return result.fetchone()

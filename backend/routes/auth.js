@@ -23,7 +23,7 @@ const generateToken = (user) => {
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
     try {
-        const { name, email, password, role, preferredLanguage } = req.body;
+        const { name, email, password, role, phone, location } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({ message: 'Name, email, and password are required.' });
@@ -44,16 +44,17 @@ router.post('/register', async (req, res) => {
         const user = await User.create({
             name: name.trim(),
             email: email.toLowerCase().trim(),
-            password,
+            passwordHash: password,
             role: role || 'farmer',
-            preferredLanguage: preferredLanguage || 'en'
+            phone: phone || null,
+            location: location || null
         });
 
         const token = generateToken(user);
         res.status(201).json({
             access_token: token,
             token_type: 'bearer',
-            user: { id: user.id, name: user.name, email: user.email, role: user.role }
+            user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, location: user.location }
         });
     } catch (error) {
         console.error('Register error:', error);
