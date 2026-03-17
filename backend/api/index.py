@@ -1,8 +1,12 @@
 from fastapi import FastAPI, Depends, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-# No specific DB connection scripts needed on startup,
-# SQLAlchemy handles its connection pooling dynamically.
+# FastAPI in Vercel maintains the same import structure if the project root is 'backend'
+# However, adding explicit sys path might be safer if needed.
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from routes import auth_routes, chat_routes, database_routes
 import ai_chatbot
 from pydantic import BaseModel
@@ -30,13 +34,10 @@ async def simple_chat(request: SimpleChatRequest):
     message = request.message
     print("User message:", message)
     
-    # Use fallback logic if OpenAI is not configured
     if not ai_chatbot.openai_client:
         return {"reply": "AI service is temporarily unavailable"}
     
     try:
-        # For simplicity in this root endpoint, we use general defaults
-        # In a real app, we'd want session/user context, but following prompt exactly
         reply = await ai_chatbot.generate_human_response(
             message=message,
             role="farmer",

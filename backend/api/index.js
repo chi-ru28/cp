@@ -2,13 +2,14 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const { connectDB } = require('./config/database');
-const authRoutes    = require('./routes/auth');
-const chatRoutes    = require('./routes/chat');
-const shopRoutes    = require('./routes/shop');
-const reminderRoutes = require('./routes/reminder');
-const weatherRoutes = require('./routes/weather');
-const cropAnalysisRoutes = require('./routes/cropAnalysis');
+// Updated imports to point up one level
+const { connectDB } = require('../config/database');
+const authRoutes    = require('../routes/auth');
+const chatRoutes    = require('../routes/chat');
+const shopRoutes    = require('../routes/shop');
+const reminderRoutes = require('../routes/reminder');
+const weatherRoutes = require('../routes/weather');
+const cropAnalysisRoutes = require('../routes/cropAnalysis');
 
 const app = express();
 
@@ -30,9 +31,7 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Ensure DB is connected before any API request is processed
-// This is critical for Vercel (serverless) to prevent "User is not defined" errors.
 app.use(async (req, res, next) => {
-    // Skip DB check for general health/root if preferred, but safer to include it.
     if (req.path === '/' || req.path === '/api/health') return next();
     
     try {
@@ -59,7 +58,7 @@ app.use('/api/analysis', cropAnalysisRoutes);
 app.get('/api/health', async (req, res) => {
     try {
         await connectDB();
-        const { db } = require('./config/database');
+        const { db } = require('../config/database');
         res.json({
             status: 'OK',
             message: 'AgriAssist backend running',
@@ -99,7 +98,6 @@ if (require.main === module || process.env.NODE_ENV === 'development') {
         })
         .catch(err => {
             console.error('❌ Failed to start database:', err.message);
-            // Don't exit if we just want to see the error in logs or if Vercel handles it
             if (process.env.NODE_ENV !== 'production') process.exit(1);
         });
 } else {
