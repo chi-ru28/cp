@@ -7,7 +7,7 @@
     },
     {
       "source": "/ai-api/(.*)",
-      "destination": "backend/api/index.py"
+      "destination": "backend/api/main.py"
     },
     {
       "source": "/(.*)",

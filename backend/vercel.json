@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/ai-api/(.*)",
-      "destination": "api/index.py"
+      "destination": "api/main.py"
     },
     {
       "source": "/(.*)",
