@@ -41,6 +41,7 @@ const defineUserModel = (sequelize) => {
     }, {
         tableName: 'users',
         timestamps: true,
+        updatedAt: false,
         underscored: true
     });
 

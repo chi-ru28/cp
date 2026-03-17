@@ -34,6 +34,7 @@ const defineReminderModel = (sequelize) => {
     }, {
         tableName: 'reminders',
         timestamps: true,
+        updatedAt: false,
         underscored: true
     });
     return Reminder;

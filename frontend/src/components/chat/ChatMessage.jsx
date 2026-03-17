@@ -31,6 +31,71 @@ const parseReport = (text) => {
 
 const severityColor = { Low: 'text-green-600 bg-green-50', Medium: 'text-yellow-600 bg-yellow-50', High: 'text-red-600 bg-red-50' };
 
+export const AnalysisResultCard = ({ result }) => {
+    return (
+        <div className="space-y-4 text-sm mt-2">
+            <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-indigo-100 shadow-sm transition-all hover:shadow-md">
+                <div className="flex items-center gap-2 font-bold text-indigo-800 mb-2">
+                    <CheckCircle size={18} className="text-indigo-600" /> Detected Disease
+                </div>
+                <p className="text-lg font-bold text-indigo-900">{result.disease}</p>
+                <div className="mt-3">
+                    <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Symptoms:</span>
+                    <p className="text-indigo-700 mt-1 italic">{result.symptoms}</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm">
+                    <div className="flex items-center gap-2 font-bold text-emerald-800 mb-2">
+                        <Leaf size={18} className="text-emerald-600" /> Organic Solution
+                    </div>
+                    <p className="text-emerald-700 leading-relaxed">{result.organic}</p>
+                    <div className="mt-3 p-2 bg-white/50 rounded-lg text-xs italic text-emerald-600">
+                        {result.solution}
+                    </div>
+                </div>
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 shadow-sm">
+                    <div className="flex items-center gap-2 font-bold text-amber-800 mb-2">
+                        <Package size={18} className="text-amber-600" /> Fertilizer & Pesticide
+                    </div>
+                    <div className="space-y-2">
+                        <p className="text-amber-700"><span className="font-bold">Fertilizer:</span> {result.fertilizer}</p>
+                        <p className="text-amber-700"><span className="font-bold">Pesticide:</span> {result.pesticide}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 shadow-sm">
+                <div className="flex items-center gap-2 font-bold text-rose-700 mb-2">
+                    <AlertTriangle size={18} className="text-rose-600" /> Important Warning
+                </div>
+                <p className="text-rose-600 font-medium">{result.warning}</p>
+            </div>
+
+            {(result.tools?.length > 0 || result.products?.length > 0) && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-2 font-bold text-slate-700 mb-3">
+                        <Package size={18} className="text-slate-500" /> Related Tools & Products
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {result.tools?.map((tool, i) => (
+                            <span key={`t-${i}`} className="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded-full text-xs font-semibold shadow-sm">
+                                🛠️ {tool}
+                            </span>
+                        ))}
+                        {result.products?.map((prod, i) => (
+                            <span key={`p-${i}`} className="px-3 py-1 bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-full text-xs font-bold shadow-sm">
+                                🛒 {prod}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 export const ReportCard = ({ report }) => {
     const { t } = useTranslation();
     return (
@@ -107,7 +172,9 @@ const ChatMessage = ({ msg, onSpeak }) => {
                 )}
 
                 {/* Content */}
-                {report ? (
+                {msg.analysisResult ? (
+                    <AnalysisResultCard result={msg.analysisResult} />
+                ) : report ? (
                     <ReportCard report={report} />
                 ) : (
                     <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : 'prose-slate'}`}>

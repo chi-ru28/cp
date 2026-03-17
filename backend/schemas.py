@@ -7,6 +7,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: str = "farmer" # 'farmer' or 'shopkeeper'
+    location: Optional[str] = None
 
     @validator('password')
     def password_must_be_valid(cls, v):

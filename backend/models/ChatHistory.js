@@ -38,6 +38,7 @@ const defineChatHistoryModel = (sequelize) => {
     }, {
         tableName: 'chat_history',
         timestamps: true,
+        updatedAt: false,
         underscored: true,
         indexes: [
             { fields: ['user_id'] },

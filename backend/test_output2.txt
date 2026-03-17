@@ -1,9 +1,0 @@
-Entities: {'intent': 'soil_deficiency', 'crop': 'Wheat', 'symptom': 'Nitrogen deficiency'}
-Diagnosis: Your Wheat crop may have nitrogen deficiency.
-Recommended Fertilizer: Urea
-Application Stage: Tillering
-Quantity: 50 kg
-Organic Alternative: Compost
-Chemical Solution: Ammonium Sulfate
-Precaution Warnings: Avoid over fertilizing
-Reference Links: https://www.google.com/search?q=Wheat+Nitrogen+deficiency+solution

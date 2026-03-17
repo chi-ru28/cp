@@ -47,6 +47,8 @@ const defineShopInventoryModel = (sequelize) => {
     }, {
         tableName: 'shop_inventory',
         timestamps: true,
+        createdAt: false,
+        updatedAt: 'updated_at',
         underscored: true
     });
     return ShopInventory;

@@ -25,7 +25,7 @@ const ChatInterface = () => {
     const { 
         messages, sendMessage, isTyping, sessions, loadSessions, 
         loadHistory, clearHistory, createNewChat, activeSessionId,
-        analyses, loadAnalyses, deleteAnalysis
+        analyses, loadAnalyses, deleteAnalysis, analyzeImage
     } = useChatContext();
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
@@ -40,6 +40,7 @@ const ChatInterface = () => {
     const [showLangMenu, setShowLangMenu] = useState(false);
     const [viewMode, setViewMode] = useState('chat'); // 'chat' or 'analysis'
     const [confirmDelete, setConfirmDelete] = useState(null); // sessionId to confirm
+    const [selectedFile, setSelectedFile] = useState(null);
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -96,6 +97,7 @@ const ChatInterface = () => {
     const handleImageUpload = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setSelectedFile(file);
         const reader = new FileReader();
         reader.onload = (ev) => {
             const dataUrl = ev.target.result;
@@ -106,6 +108,15 @@ const ChatInterface = () => {
         };
         reader.readAsDataURL(file);
         e.target.value = '';
+    };
+
+    const handleAnalyze = () => {
+        if (!selectedFile) return;
+        analyzeImage(selectedFile);
+        setSelectedFile(null);
+        setImagePreview(null);
+        setImageBase64(null);
+        setImageMimeType(null);
     };
 
     const QUICK_CHIPS = [
@@ -323,12 +334,19 @@ const ChatInterface = () => {
                     <div className="max-w-4xl mx-auto">
                         {/* Image preview */}
                         {imagePreview && (
-                            <div className="mb-2 relative w-20">
-                                <img src={imagePreview} alt="preview" className="w-20 h-16 object-cover rounded-xl border border-slate-200" />
-                                <button onClick={() => { setImagePreview(null); setImageBase64(null); setImageMimeType(null); }}
-                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">
-                                    <X size={10} />
-                                </button>
+                            <div className="mb-2 relative w-20 flex gap-2 items-end">
+                                <div className="relative">
+                                    <img src={imagePreview} alt="preview" className="w-20 h-16 object-cover rounded-xl border border-slate-200" />
+                                    <button onClick={() => { setImagePreview(null); setImageBase64(null); setImageMimeType(null); setSelectedFile(null); }}
+                                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">
+                                        <X size={10} />
+                                    </button>
+                                </div>
+                                {selectedFile && (
+                                    <button onClick={handleAnalyze} className="mb-1 px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-bold rounded-lg shadow hover:bg-indigo-700 transition-all">
+                                        ANALYZE DISEASE
+                                    </button>
+                                )}
                             </div>
                         )}
 

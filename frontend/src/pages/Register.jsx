@@ -5,15 +5,15 @@ import { UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Register = () => {
-    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'farmer' });
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'farmer', location: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-
+ 
     const { register } = useAuth();
     const navigate = useNavigate();
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
+ 
     const getPasswordStrength = (pass) => {
         if (!pass) return { score: 0, label: '', color: '' };
         let score = 0;
@@ -27,20 +27,20 @@ const Register = () => {
         if (score <= 4) return { score, label: 'Medium', color: 'bg-yellow-500' };
         return { score, label: 'Strong', color: 'bg-green-500' };
     };
-
+ 
     const strength = getPasswordStrength(formData.password);
-
+ 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-
+ 
         if (strength.label === 'Weak' || strength.label === 'Medium') {
             alert(`Your password is ${strength.label}. Please use a stronger password (8+ chars, upper, lower, number, special).`);
             if (strength.score < 5) return;
         }
-
+ 
         setIsLoading(true);
-        const res = await register(formData.name, formData.email, formData.password, formData.role);
+        const res = await register(formData.name, formData.email, formData.password, formData.role, formData.location);
         if (res.success) {
             navigate('/chat');
         } else {
@@ -96,6 +96,11 @@ const Register = () => {
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Email Address</label>
                             <input type="email" name="email" required className="input-field py-2.5" placeholder="farmer@example.com" value={formData.email} onChange={handleChange} />
+                        </div>
+ 
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Location (City)</label>
+                            <input type="text" name="location" required className="input-field py-2.5" placeholder="e.g. Ahmedabad, Ranuj" value={formData.location} onChange={handleChange} />
                         </div>
 
                         <div className="grid grid-cols-1 gap-4">

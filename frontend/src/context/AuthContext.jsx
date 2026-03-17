@@ -95,9 +95,9 @@ export const AuthProvider = ({ children }) => {
         loginWithRedirect({ authorizationParams: { screen_hint: 'signup' } });
 
     // ─── Registration (existing backend) ────────────────────────────────────
-    const register = async (name, email, password, role) => {
+    const register = async (name, email, password, role, location) => {
         try {
-            const response = await api.post('/auth/register', { name, email, password, role });
+            const response = await api.post('/auth/register', { name, email, password, role, location });
             const { access_token } = response.data;
             const decoded = decodeToken(access_token);
             localStorage.setItem('agri_assist_token', access_token);

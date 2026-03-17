@@ -69,42 +69,126 @@ export const ChatProvider = ({ children }) => {
         setError('');
 
         try {
-            const payload = {
-                message: text || 'Please analyze this image.',
-                role: 'farmer',
-                location: 'Ranuj',
-                sessionId: activeSessionId,
-                ...(imageBase64 && { imageBase64, imageMimeType }),
-            };
-
             const token = localStorage.getItem('agri_assist_token');
-            const res = await fetch("http://localhost:8000/api/chat", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) {
-                throw new Error("Unable to reach AI assistant");
+            
+            // STEP 7: Health Check (FastAPI)
+            try {
+                const healthRes = await fetch("http://localhost:8000/health");
+                const healthData = await healthRes.json();
+                if (healthData.status !== "ok") {
+                    throw new Error("Server unhealthy");
+                }
+            } catch (err) {
+                console.warn("FastAPI health check failed, falling back to message attempt");
             }
 
-            const data = await res.json();
-            const aiReply = data.response || data.reply || 'No response received.';
-            const newSessionId = data.sessionId;
+            // STEP 4 & 6 & 7: Fetch API (FastAPI - Elite Pipeline)
+            const message = text || 'Please analyze this image.';
+            const response = await fetch("http://localhost:8000/api/chat", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ 
+                    message,
+                    sessionId: activeSessionId,
+                    imageBase64,
+                    imageMimeType
+                })
+            });
+
+            if (!response.ok) {
+                // If 8000 fails, try Node.js fallback (5000)
+                console.warn("Direct FastAPI call failed, trying Node.js bridge...");
+                const bridgeRes = await api.post('/chat', {
+                    message,
+                    sessionId: activeSessionId,
+                    imageBase64,
+                    imageMimeType
+                });
+                
+                const aiReply = bridgeRes.data.reply || 'No response received.';
+                const aiMsg = { id: (Date.now() + 1).toString(), text: aiReply, sender: 'ai', timestamp: new Date() };
+                setMessages(prev => [...prev, aiMsg]);
+                if (bridgeRes.data.sessionId) setActiveSessionId(bridgeRes.data.sessionId);
+                await loadSessions();
+                return;
+            }
+
+            const data = await response.json();
+            const aiReply = data.reply || 'No response received.';
+
+            if (aiReply === "AI service is temporarily unavailable") {
+                setError('⚠️ AI service is temporarily unavailable.');
+            }
 
             const aiMsg = { id: (Date.now() + 1).toString(), text: aiReply, sender: 'ai', timestamp: new Date() };
             setMessages(prev => [...prev, aiMsg]);
 
-            if (!activeSessionId) {
-                setActiveSessionId(newSessionId);
-            }
+            if (data.sessionId) setActiveSessionId(data.sessionId);
             await loadSessions();
         } catch (error) {
-            setError('Unable to reach AI assistant');
-            const errMsg = { id: (Date.now() + 1).toString(), text: 'Unable to reach AI assistant', sender: 'ai', timestamp: new Date() };
+            console.error("Chat Error:", error);
+            setError('⚠️ Server is not connected. Please try again.');
+            const errMsg = { id: (Date.now() + 1).toString(), text: '⚠️ Server is not connected. Please try again.', sender: 'ai', timestamp: new Date() };
+            setMessages(prev => [...prev, errMsg]);
+        } finally {
+            setIsTyping(false);
+        }
+    };
+
+    const analyzeImage = async (file) => {
+        setIsTyping(true);
+        setError('');
+        
+        const userMsg = { 
+            id: Date.now().toString(), 
+            text: `🔍 Analyzing crop image: ${file.name}`, 
+            sender: 'user', 
+            timestamp: new Date() 
+        };
+        setMessages(prev => [...prev, userMsg]);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const token = localStorage.getItem('agri_assist_token');
+            const response = await fetch("http://localhost:8000/api/chat/analyze-image", {
+                method: "POST",
+                headers: { 
+                    "Authorization": `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || "Analysis failed");
+            }
+
+            const data = await response.json();
+            
+            const aiMsg = { 
+                id: (Date.now() + 1).toString(), 
+                text: `✅ Analysis Complete!`,
+                analysisResult: data, 
+                sender: 'ai', 
+                timestamp: new Date() 
+            };
+            setMessages(prev => [...prev, aiMsg]);
+            
+            await loadAnalyses();
+        } catch (err) {
+            console.error("Analysis Error:", err);
+            setError(err.message || 'Unable to analyze image. Please try again.');
+            const errMsg = { 
+                id: (Date.now() + 1).toString(), 
+                text: `⚠️ ${err.message || 'Unable to analyze image. Please try again.'}`, 
+                sender: 'ai', 
+                timestamp: new Date() 
+            };
             setMessages(prev => [...prev, errMsg]);
         } finally {
             setIsTyping(false);
@@ -134,7 +218,7 @@ export const ChatProvider = ({ children }) => {
         <ChatContext.Provider value={{
             messages, sessions, activeSessionId, isTyping, error, analyses,
             loadSessions, loadHistory, clearHistory, sendMessage, createNewChat,
-            loadAnalyses, deleteAnalysis
+            loadAnalyses, deleteAnalysis, analyzeImage
         }}>
             {children}
         </ChatContext.Provider>

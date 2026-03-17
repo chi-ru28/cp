@@ -40,56 +40,71 @@ router = APIRouter()
 async def get_sessions(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user_id = current_user.get("user_id")
 
-    # Use a subquery or group by to get unique sessions
-    from sqlalchemy import func
-    sessions = db.query(
-        models.ChatHistory.session_id,
-        func.min(models.ChatHistory.message).label("first_message"),
-        func.max(models.ChatHistory.created_at).label("updated_at")
-    ).filter(models.ChatHistory.user_id == user_id).group_by(models.ChatHistory.session_id).order_by(desc("updated_at")).all()
+    # Fetch dedicated sessions from ChatSession table
+    sessions = db.query(models.ChatSession).filter(
+        models.ChatSession.user_id == user_id
+    ).order_by(desc(models.ChatSession.updated_at)).all()
     
     formatted = []
     for s in sessions:
-        title = s.first_message or "New Chat"
-        if len(title) > 40:
-            title = title[:40] + "..."
         formatted.append({
-            "sessionId": s.session_id,
-            "title": title,
-            "updatedAt": s.updated_at.isoformat() if s.updated_at else None
+            "sessionId": s.id,
+            "title": s.title,
+            "updatedAt": s.updated_at.isoformat() if s.updated_at else None,
+            "role": s.role
         })
         
     return {"sessions": formatted}
 
-# GET CHAT HISTORY
+# GET CHAT HISTORY FOR A SESSION
 @router.get("/history/{session_id}")
 async def get_history(session_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user_id = current_user.get("user_id")
 
-    chats = db.query(models.ChatHistory).filter(
-        models.ChatHistory.user_id == user_id,
-        models.ChatHistory.session_id == session_id
-    ).order_by(models.ChatHistory.created_at).all()
+    # Verify session ownership
+    session = db.query(models.ChatSession).filter(
+        models.ChatSession.id == session_id,
+        models.ChatSession.user_id == user_id
+    ).first()
     
-    formatted_chats = []
-    for chat in chats:
-        formatted_chats.append({
-            "id": str(chat.id),
-            "message": chat.message,
-            "reply": chat.response,
-            "timestamp": chat.created_at.isoformat() if chat.created_at else None
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found or access denied")
+
+    messages = db.query(models.ChatMessage).filter(
+        models.ChatMessage.session_id == session_id
+    ).order_by(models.ChatMessage.timestamp).all()
+    
+    formatted_history = []
+    for m in messages:
+        formatted_history.append({
+            "id": str(m.id),
+            "sender": m.sender,
+            "message": m.message,
+            "intent": m.intent,
+            "timestamp": m.timestamp.isoformat() if m.timestamp else None
         })
         
-    return {"history": formatted_chats, "sessionId": session_id}
+    return {
+        "history": formatted_history, 
+        "sessionId": session_id,
+        "sessionTitle": session.title,
+        "role": session.role
+    }
 
+# DELETE A SESSION (and all its messages via cascade)
 @router.delete("/history/{session_id}")
-async def clear_history(session_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+async def delete_session(session_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     user_id = current_user.get("user_id")
     
-    deleted_count = db.query(models.ChatHistory).filter(
-        models.ChatHistory.user_id == user_id,
-        models.ChatHistory.session_id == session_id
-    ).delete()
+    session = db.query(models.ChatSession).filter(
+        models.ChatSession.id == session_id,
+        models.ChatSession.user_id == user_id
+    ).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    db.delete(session)
     db.commit()
     
-    return {"message": "Session deleted", "deleted_count": deleted_count}
+    return {"message": "Session and history deleted"}

@@ -60,6 +60,7 @@ const defineCropAnalysisModel = (sequelize) => {
     }, {
         tableName: 'crop_analysis',
         timestamps: true,
+        updatedAt: false,
         underscored: true
     });
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, Enum, Text, DateTime, Numeric, Integer
+from sqlalchemy import Column, String, Boolean, ForeignKey, Enum, Text, DateTime, Numeric, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -27,12 +27,19 @@ class Crop(Base):
     growing_season = Column(String(255))
     soil_type = Column(Text)
 
-class FertilizerType(Base):
-    __tablename__ = "fertilizer_types"
+class FertilizerKnowledge(Base):
+    __tablename__ = "fertilizer_knowledge"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     fertilizer_name = Column(String(255), unique=True, nullable=False, index=True)
     category = Column(String(255)) # organic / chemical
+    plant_name = Column(String(100), index=True)
+    plant_type = Column(String(50))
+    issue = Column(String(255))
+    recommended_quantity = Column(String(100))
+    application_stage = Column(String(255))
+    application_method = Column(Text)
+    precaution = Column(Text)
     main_nutrients = Column(String(255))
     description = Column(Text)
     usage_warning = Column(Text)
@@ -42,13 +49,13 @@ class CropFertilizerMapping(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     crop_id = Column(UUID(as_uuid=True), ForeignKey("crops.id", ondelete="CASCADE"), nullable=False)
-    fertilizer_id = Column(UUID(as_uuid=True), ForeignKey("fertilizer_types.id", ondelete="CASCADE"), nullable=False)
+    fertilizer_id = Column(UUID(as_uuid=True), ForeignKey("fertilizer_knowledge.id", ondelete="CASCADE"), nullable=False)
     recommended_quantity = Column(String(100))
     application_stage = Column(String(255))
     application_method = Column(Text)
 
-class SoilDeficiency(Base):
-    __tablename__ = "soil_deficiency"
+class SoilIssue(Base):
+    __tablename__ = "soil_issues"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     deficiency_name = Column(String(255), nullable=False, index=True)
@@ -57,20 +64,21 @@ class SoilDeficiency(Base):
     organic_solution = Column(Text)
     chemical_solution = Column(Text)
     precautions = Column(Text)
+    reference_link = Column(String(500))
 
-class PesticideSolution(Base):
-    __tablename__ = "pesticide_solutions"
+class PesticideKnowledge(Base):
+    __tablename__ = "pesticide_knowledge"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    crop_id = Column(UUID(as_uuid=True), ForeignKey("crops.id", ondelete="CASCADE"))
-    pest_name = Column(String(255), nullable=False)
+    crop_name = Column(String(100), index=True)
+    pest_name = Column(String(255))
     organic_pesticide = Column(String(255))
     chemical_pesticide = Column(String(255))
     application_method = Column(Text)
     safety_warning = Column(Text)
 
-class FarmingTool(Base):
-    __tablename__ = "farming_tools"
+class Tool(Base):
+    __tablename__ = "tools"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tool_name = Column(String(255), nullable=False, index=True)
@@ -79,22 +87,8 @@ class FarmingTool(Base):
     description = Column(Text)
     purchase_link = Column(String(500))
 
-class CropIssueReport(Base):
-    __tablename__ = "crop_issue_reports"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    farmer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    crop_name = Column(String(100))
-    issue_description = Column(Text)
-    detected_problem = Column(Text)
-    recommended_fertilizer = Column(Text)
-    organic_solution = Column(Text)
-    chemical_solution = Column(Text)
-    reference_link = Column(String(500))
-    report_generated_at = Column(DateTime(timezone=True), server_default=func.now())
-
-class ShopInventory(Base):
-    __tablename__ = "shop_inventory"
+class Product(Base):
+    __tablename__ = "products"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     shopkeeper_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -106,29 +100,27 @@ class ShopInventory(Base):
     availability = Column(Boolean, default=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-class ChatHistory(Base):
-    __tablename__ = "chat_history"
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False, default="New Chat")
+    role = Column(String(20), nullable=False, default="farmer")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    session_id = Column(String(36), nullable=False, index=True)
+    session_id = Column(String(36), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    sender = Column(String(10), nullable=False) # 'user' or 'ai'
     message = Column(Text, nullable=False)
-    response = Column(Text, nullable=False)
+    context_used = Column(JSON, nullable=True) # To store DB context from RAG
     intent = Column(String(100), nullable=True)
     language = Column(String(10), default="en")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-class FertilizerKnowledge(Base):
-    __tablename__ = "fertilizer_knowledge"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    plant_name = Column(String(100), index=True)
-    plant_type = Column(String(50))
-    issue = Column(String(255))
-    recommended_fertilizer = Column(String(255))
-    organic_alternative = Column(String(255))
-    application_stage = Column(String(255))
-    precaution = Column(Text)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
 class Reminder(Base):
     __tablename__ = "reminders"
@@ -138,4 +130,32 @@ class Reminder(Base):
     reminder_type = Column(String(50), nullable=True)
     message = Column(Text, nullable=False)
     reminder_date = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class CropImage(Base):
+    __tablename__ = "crop_images"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    image_url = Column(Text, nullable=False)
+    description = Column(JSON, nullable=True) # JSON results of analysis
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Advisory(Base):
+    __tablename__ = "advisories"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    shopkeeper_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    target_crop = Column(String(100), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class AppTranslation(Base):
+    __tablename__ = "translations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    language = Column(String(10), index=True)
+    original_text = Column(Text, nullable=False)
+    translated_text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

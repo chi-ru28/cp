@@ -33,7 +33,8 @@ const connectDB = async () => {
     // 3. Start a new initialization and track it in the container
     db.initializationPromise = (async () => {
         const { defineUserModel } = require('../models/User');
-        const { defineChatHistoryModel } = require('../models/ChatHistory');
+        const { defineChatSessionModel } = require('../models/ChatSession');
+        const { defineChatMessageModel } = require('../models/ChatMessage');
         const { defineCropModel } = require('../models/Crop');
         const { defineFertilizerTypeModel } = require('../models/FertilizerType');
         const { defineCropFertilizerMappingModel } = require('../models/CropFertilizerMapping');
@@ -71,8 +72,10 @@ const connectDB = async () => {
                 }),
                 pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
                 define: {
-                    underscored: true, // Use created_at instead of createdAt
-                    timestamps: true
+                    underscored: true,
+                    timestamps: true,
+                    updatedAt: false,
+                    freezeTableName: true
                 }
             });
         } else {
@@ -92,7 +95,8 @@ const connectDB = async () => {
 
         // C. Define Models
         defineUserModel(sequelize);
-        defineChatHistoryModel(sequelize);
+        defineChatSessionModel(sequelize);
+        defineChatMessageModel(sequelize);
         defineCropModel(sequelize);
         defineFertilizerTypeModel(sequelize);
         defineCropFertilizerMappingModel(sequelize);
