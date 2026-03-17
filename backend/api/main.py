@@ -21,15 +21,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_routes.router, prefix="/api/auth", tags=["Auth"])
-app.include_router(chat_routes.router, prefix="/api/chat", tags=["Chat History"])
-app.include_router(ai_chatbot.router, prefix="/api/chat", tags=["AI Chatbot"])
-app.include_router(database_routes.router, prefix="/api/database", tags=["Database Inspection"])
+app.include_router(auth_routes.router, prefix="/ai-api/auth", tags=["Auth"])
+app.include_router(chat_routes.router, prefix="/ai-api/chat", tags=["Chat History"])
+app.include_router(ai_chatbot.router, prefix="/ai-api/chat", tags=["AI Chatbot"])
+app.include_router(database_routes.router, prefix="/ai-api/database", tags=["Database Inspection"])
 
 class SimpleChatRequest(BaseModel):
     message: str
 
-@app.post("/chat")
+@app.post("/ai-api/chat")
 async def simple_chat(request: SimpleChatRequest):
     message = request.message
     print("User message:", message)
@@ -51,7 +51,7 @@ async def simple_chat(request: SimpleChatRequest):
         print(f"Chat Error: {str(e)}")
         return {"reply": "AI service is temporarily unavailable"}
 
-@app.get("/health")
+@app.get("/ai-api/health")
 def health_check():
     return {"status": "ok"}
 
@@ -66,6 +66,6 @@ async def global_exception_handler(request, exc):
         content={"message": "Internal server error", "detail": str(exc)},
     )
 
-@app.get("/")
+@app.get("/ai-api")
 def read_root():
-    return {"message": "Welcome to AgriAssist API"}
+    return {"message": "Welcome to AgriAssist AI API"}

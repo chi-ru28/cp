@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "description": "Root package for running AgriAssist servers concurrently",
     "scripts": {
+        "build": "cd frontend && npm install && npm run build",
         "start": "concurrently \"npm run start:frontend\" \"npm run start:node-backend\" \"npm run start:py-backend\"",
         "start:frontend": "cd frontend && npm run dev",
         "start:node-backend": "cd backend && npm run start",
