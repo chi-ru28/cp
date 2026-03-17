@@ -11,12 +11,20 @@
     {
       "src": "backend/server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "backend/main.py",
+      "use": "@vercel/python"
     }
   ],
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "backend/server.js"
+    },
+    {
+      "source": "/ai-api/(.*)",
+      "destination": "backend/main.py"
     },
     {
       "source": "/(.*)",

@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 
+const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 
+                   (window.location.hostname.includes('vercel.app') 
+                    ? `${window.location.origin}/ai-api` 
+                    : 'http://localhost:8000');
+
 const ChatContext = createContext();
 
 export const useChatContext = () => useContext(ChatContext);
@@ -73,7 +78,7 @@ export const ChatProvider = ({ children }) => {
             
             // STEP 7: Health Check (FastAPI)
             try {
-                const healthRes = await fetch("http://localhost:8000/health");
+                const healthRes = await fetch(`${FASTAPI_URL}/health`);
                 const healthData = await healthRes.json();
                 if (healthData.status !== "ok") {
                     throw new Error("Server unhealthy");
@@ -84,7 +89,7 @@ export const ChatProvider = ({ children }) => {
 
             // STEP 4 & 6 & 7: Fetch API (FastAPI - Elite Pipeline)
             const message = text || 'Please analyze this image.';
-            const response = await fetch("http://localhost:8000/api/chat", {
+            const response = await fetch(`${FASTAPI_URL}/api/chat`, {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json",
@@ -155,7 +160,7 @@ export const ChatProvider = ({ children }) => {
             formData.append('file', file);
 
             const token = localStorage.getItem('agri_assist_token');
-            const response = await fetch("http://localhost:8000/api/chat/analyze-image", {
+            const response = await fetch(`${FASTAPI_URL}/api/chat/analyze-image`, {
                 method: "POST",
                 headers: { 
                     "Authorization": `Bearer ${token}`
