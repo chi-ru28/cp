@@ -1,8 +1,8 @@
 {
   "version": 2,
   "functions": {
-    "server.js": { "runtime": "nodejs20.x" },
-    "main.py": { "runtime": "python3.12" }
+    "server.js": { "runtime": "node@20.x" },
+    "main.py": { "runtime": "python@3.12" }
   },
   "rewrites": [
     {
