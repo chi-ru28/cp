@@ -4,9 +4,17 @@
     {
       "src": "server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "main.py",
+      "use": "@vercel/python"
     }
   ],
   "rewrites": [
+    {
+      "source": "/ai-api/(.*)",
+      "destination": "main.py"
+    },
     {
       "source": "/(.*)",
       "destination": "server.js"
