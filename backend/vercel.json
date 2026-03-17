@@ -1,15 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "main.py",
-      "use": "@vercel/python"
-    }
-  ],
+  "functions": {
+    "server.js": { "runtime": "@vercel/node" },
+    "main.py": { "runtime": "@vercel/python" }
+  },
   "rewrites": [
     {
       "source": "/ai-api/(.*)",
