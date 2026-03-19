@@ -1,13 +1,18 @@
 {
   "version": 2,
+  "functions": {
+    "api/main.py": {
+      "runtime": "python3.9"
+    }
+  },
   "rewrites": [
     {
       "source": "/ai-api/(.*)",
-      "destination": "api/main.py"
+      "destination": "/api/main.py"
     },
     {
       "source": "/(.*)",
-      "destination": "api/index.js"
+      "destination": "/api/index.js"
     }
   ]
 }

@@ -1,11 +1,16 @@
 from fastapi import FastAPI, Depends, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-# FastAPI in Vercel maintains the same import structure if the project root is 'backend'
-# However, adding explicit sys path might be safer if needed.
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import traceback
+
+# Add the backend directory (parent of api/) to sys.path
+# so that modules like ai_chatbot, models, routes etc. resolve correctly
+# This is required for Vercel Python serverless (api/main.py is the entry point)
+_backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
 
 from routes import auth_routes, chat_routes, database_routes
 import ai_chatbot
@@ -38,14 +43,15 @@ async def simple_chat(request: SimpleChatRequest):
         return {"reply": "AI service is temporarily unavailable"}
     
     try:
-        reply = await ai_chatbot.generate_human_response(
-            message=message,
-            role="farmer",
-            intent="general",
-            entities={},
-            db_data={},
-            language="English"
+        resp = ai_chatbot.openai_client.chat.completions.create(
+            model=ai_chatbot.MODEL_NAME,
+            messages=[
+                {"role": "system", "content": "You are an expert agricultural assistant. Help farmers with crop issues, fertilizers, pesticides, weather impact, and farming tools."},
+                {"role": "user", "content": message}
+            ],
+            max_tokens=800
         )
+        reply = resp.choices[0].message.content.strip()
         return {"reply": reply}
     except Exception as e:
         print(f"Chat Error: {str(e)}")
@@ -53,19 +59,30 @@ async def simple_chat(request: SimpleChatRequest):
 
 @app.get("/ai-api/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "AgriAssist AI API"}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    import traceback
-    with open("crash_traceback.log", "a") as f:
-        f.write(f"\n--- Exception at {request.url} ---\n")
-        f.write(traceback.format_exc())
+    # Log to stdout (visible in Vercel function logs) instead of a local file
+    print(f"--- Exception at {request.url} ---")
+    print(traceback.format_exc())
     return JSONResponse(
         status_code=500,
         content={"message": "Internal server error", "detail": str(exc)},
     )
 
 @app.get("/ai-api")
+@app.get("/ai-api/")
 def read_root():
-    return {"message": "Welcome to AgriAssist AI API"}
+    return {
+        "message": "Welcome to AgriAssist AI API",
+        "status": "online",
+        "endpoints": {
+            "health": "/ai-api/health",
+            "chat": "/ai-api/chat"
+        }
+    }
+
+@app.get("/")
+def home():
+    return {"message": "AgriAssist AI Backend is active. Use /ai-api for API access."}

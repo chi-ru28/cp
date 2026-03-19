@@ -86,8 +86,10 @@ router.post('/', protect, async (req, res) => {
 
         // Generate AI reply using Python FastAPI Engine
         let finalReply = '🙏 I\'m having trouble connecting to the AI right now. Please try again shortly.';
+        const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000/ai-api/chat';
+
         try {
-            const pythonResponse = await axios.post('http://127.0.0.1:8000/api/chat', {
+            const pythonResponse = await axios.post(AI_ENGINE_URL, {
                 message: trimmedMessage,
                 sessionId: currentSessionId,
                 role: role,
@@ -97,7 +99,7 @@ router.post('/', protect, async (req, res) => {
             }, {
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': req.headers.authorization // Forward the token
+                    'Authorization': req.headers.authorization 
                 },
                 timeout: 30000 
             });
@@ -161,17 +163,32 @@ router.get('/history/:sessionId', protect, async (req, res) => {
             raw: true
         });
 
-        const history = chats.map(c => ({
-            id: c.id,
-            message: c.sender === 'user' ? c.message : null,
-            reply: c.sender === 'ai' ? c.message : null,
-            sender: c.sender,
-            text: c.message,
-            timestamp: c.timestamp
-        }));
+        // Group messages into pairs (or maintain sequence) as expected by ChatContext.jsx
+        // ChatContext.jsx expects: history: [{ id, message: 'user text', reply: 'ai text', timestamp }, ...]
+        // Current DB stores them as separate rows.
+        const history = [];
+        for (let i = 0; i < chats.length; i++) {
+            const current = chats[i];
+            if (current.sender === 'user') {
+                const next = chats[i + 1];
+                history.push({
+                    id: current.id,
+                    message: current.message,
+                    reply: (next && next.sender === 'ai') ? next.message : null,
+                    timestamp: current.timestamp
+                });
+                if (next && next.sender === 'ai') i++; // Skip the AI message as it's paired
+            } else {
+                // Orphan AI message
+                history.push({
+                    id: current.id,
+                    message: null,
+                    reply: current.message,
+                    timestamp: current.timestamp
+                });
+            }
+        }
 
-        // Group into user/ai pairs for the frontend if needed, 
-        // but current frontend expects an array of messages
         res.json({ history, sessionId });
     } catch (error) {
         console.error('History error:', error);

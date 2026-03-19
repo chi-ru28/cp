@@ -1,10 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 
-const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 
-                   (window.location.hostname.includes('vercel.app') 
-                    ? `${window.location.origin}/ai-api` 
-                    : 'http://localhost:8000');
+const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000/ai-api';
 
 const ChatContext = createContext();
 
@@ -36,9 +33,35 @@ export const ChatProvider = ({ children }) => {
             const res = await api.get(`/chat/history/${sessionId}`);
             if (res.data.history) {
                 const formatted = [];
-                res.data.history.forEach(chat => {
-                    formatted.push({ id: `u_${chat.id}`, text: chat.message, sender: 'user', timestamp: chat.timestamp });
-                    formatted.push({ id: `a_${chat.id}`, text: chat.reply, sender: 'ai', timestamp: chat.timestamp });
+                res.data.history.forEach((chat, idx) => {
+                    // Node.js format: { message (user text), reply (ai text) }
+                    if (chat.message !== undefined || chat.reply !== undefined) {
+                        if (chat.message) {
+                            formatted.push({
+                                id: `u_${chat.id || idx}`,
+                                text: chat.message,
+                                sender: 'user',
+                                timestamp: chat.timestamp
+                            });
+                        }
+                        if (chat.reply) {
+                            formatted.push({
+                                id: `a_${chat.id || idx}`,
+                                text: chat.reply,
+                                sender: 'ai',
+                                timestamp: chat.timestamp
+                            });
+                        }
+                    }
+                    // Python FastAPI format: { sender: 'user'|'ai', message }
+                    else if (chat.sender && chat.message) {
+                        formatted.push({
+                            id: `${chat.sender}_${chat.id || idx}`,
+                            text: chat.message,
+                            sender: chat.sender === 'user' ? 'user' : 'ai',
+                            timestamp: chat.timestamp
+                        });
+                    }
                 });
                 setMessages(formatted);
                 setActiveSessionId(sessionId);
@@ -89,7 +112,7 @@ export const ChatProvider = ({ children }) => {
 
             // STEP 4 & 6 & 7: Fetch API (FastAPI - Elite Pipeline)
             const message = text || 'Please analyze this image.';
-            const response = await fetch(`${FASTAPI_URL}/api/chat`, {
+            const response = await fetch(`${FASTAPI_URL}/chat`, {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json",
@@ -160,7 +183,7 @@ export const ChatProvider = ({ children }) => {
             formData.append('file', file);
 
             const token = localStorage.getItem('agri_assist_token');
-            const response = await fetch(`${FASTAPI_URL}/api/chat/analyze-image`, {
+            const response = await fetch(`${FASTAPI_URL}/chat/analyze-image`, {
                 method: "POST",
                 headers: { 
                     "Authorization": `Bearer ${token}`
