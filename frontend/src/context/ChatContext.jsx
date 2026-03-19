@@ -99,62 +99,26 @@ export const ChatProvider = ({ children }) => {
         try {
             const token = localStorage.getItem('agri_assist_token');
             
-            // STEP 7: Health Check (FastAPI)
-            try {
-                const healthRes = await fetch(`${FASTAPI_URL}/health`);
-                const healthData = await healthRes.json();
-                if (healthData.status !== "ok") {
-                    throw new Error("Server unhealthy");
-                }
-            } catch (err) {
-                console.warn("FastAPI health check failed, falling back to message attempt");
-            }
-
-            // STEP 4 & 6 & 7: Fetch API (FastAPI - Elite Pipeline)
-            const message = text || 'Please analyze this image.';
-            const response = await fetch(`${FASTAPI_URL}/chat`, {
-                method: "POST",
-                headers: { 
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ 
-                    message,
-                    sessionId: activeSessionId,
-                    imageBase64,
-                    imageMimeType
-                })
+            const messageStr = text || 'Please analyze this image.';
+            
+            // Send message to Node.js backend to ensure DB persistence
+            const bridgeRes = await api.post('/chat', {
+                message: messageStr,
+                sessionId: activeSessionId,
+                imageBase64,
+                imageMimeType
             });
-
-            if (!response.ok) {
-                // If 8000 fails, try Node.js fallback (5000)
-                console.warn("Direct FastAPI call failed, trying Node.js bridge...");
-                const bridgeRes = await api.post('/chat', {
-                    message,
-                    sessionId: activeSessionId,
-                    imageBase64,
-                    imageMimeType
-                });
-                
-                const aiReply = bridgeRes.data.reply || 'No response received.';
-                const aiMsg = { id: (Date.now() + 1).toString(), text: aiReply, sender: 'ai', timestamp: new Date() };
-                setMessages(prev => [...prev, aiMsg]);
-                if (bridgeRes.data.sessionId) setActiveSessionId(bridgeRes.data.sessionId);
-                await loadSessions();
-                return;
-            }
-
-            const data = await response.json();
-            const aiReply = data.reply || 'No response received.';
-
+            
+            const aiReply = bridgeRes.data.reply || 'No response received.';
+            
             if (aiReply === "AI service is temporarily unavailable") {
                 setError('⚠️ AI service is temporarily unavailable.');
             }
 
             const aiMsg = { id: (Date.now() + 1).toString(), text: aiReply, sender: 'ai', timestamp: new Date() };
             setMessages(prev => [...prev, aiMsg]);
-
-            if (data.sessionId) setActiveSessionId(data.sessionId);
+            
+            if (bridgeRes.data.sessionId) setActiveSessionId(bridgeRes.data.sessionId);
             await loadSessions();
         } catch (error) {
             console.error("Chat Error:", error);
