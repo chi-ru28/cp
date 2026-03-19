@@ -32,7 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Ensure DB is connected before any API request is processed
 app.use(async (req, res, next) => {
-    if (req.path === '/' || req.path === '/api/health') return next();
+    if (req.path === '/' || req.path === '/api/health' || req.path.startsWith('/ai-api')) return next();
     
     try {
         await connectDB();
@@ -72,6 +72,78 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
+
+// ─────────────────────────────────────────────
+//  AI API routes – served directly from Express
+//  (Python FastAPI is used for local dev only;
+//   on Vercel we call OpenAI directly from Node)
+// ─────────────────────────────────────────────
+const aiRouter = express.Router();
+
+// GET /ai-api/health
+aiRouter.get('/health', (req, res) => {
+    res.json({ status: 'ok', service: 'AgriAssist AI API (Node)' });
+});
+
+// GET /ai-api  and  GET /ai-api/
+aiRouter.get(['/', ''], (req, res) => {
+    res.json({
+        message: 'Welcome to AgriAssist AI API',
+        status: 'online',
+        endpoints: { health: '/ai-api/health', chat: '/ai-api/chat' }
+    });
+});
+
+// POST /ai-api/chat  – AI chat endpoint (calls OpenAI directly)
+aiRouter.post('/chat', async (req, res) => {
+    const { message, sessionId, role, location, imageBase64, imageMimeType } = req.body;
+    if (!message || !message.trim()) {
+        return res.status(400).json({ reply: 'Message is required.' });
+    }
+
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+        return res.json({ reply: 'AI service is temporarily unavailable', sessionId });
+    }
+
+    try {
+        const messages = [
+            {
+                role: 'system',
+                content: 'You are an expert agricultural assistant. Help farmers with crop issues, fertilizers, pesticides, weather impact, and farming tools. Be concise, practical, and helpful.'
+            },
+            { role: 'user', content: message.trim() }
+        ];
+
+        const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages,
+                max_tokens: 800
+            })
+        });
+
+        if (!openaiRes.ok) {
+            const errText = await openaiRes.text();
+            console.error('OpenAI Error:', errText);
+            return res.json({ reply: 'AI service is temporarily unavailable', sessionId });
+        }
+
+        const data = await openaiRes.json();
+        const reply = data.choices?.[0]?.message?.content?.trim() || 'No response from AI.';
+        return res.json({ reply, sessionId: sessionId || null });
+    } catch (err) {
+        console.error('AI chat error:', err.message);
+        return res.json({ reply: 'AI service is temporarily unavailable', sessionId });
+    }
+});
+
+app.use('/ai-api', aiRouter);
 
 // 404
 app.use((req, res) => {

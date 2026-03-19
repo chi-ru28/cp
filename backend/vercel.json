@@ -2,10 +2,6 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/ai-api/(.*)",
-      "destination": "/api/main.py"
-    },
-    {
       "source": "/(.*)",
       "destination": "/api/index.js"
     }
