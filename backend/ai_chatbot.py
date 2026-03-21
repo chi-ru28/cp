@@ -139,39 +139,42 @@ def extract_city(message: str, default_loc: str = "Ahmedabad"):
 # INTENT DETECTION
 # ─────────────────────────────────────────────
 
-def detect_intents(msg: str) -> list[str]:
-    msg_low = msg.lower()
+def detect_intents(msg: str) -> str:
+    msg_low = msg.lower().strip()
     
-    # 1. Price Intent (Highest Priority)
-    if any(k in msg_low for k in ["price", "cost", "rate", "₹", "kg"]):
-        return ["price"]
+    # Keyword Lists (Regex patterns with word boundaries)
+    intents_map = {
+        "set_reminder": ["remind", "reminder", "schedule"],
+        "price":        ["price", "cost", "rate", "₹", r"\brs\b", r"\bkg\b"],
+        "tools":        ["tool", "tractor", "machine", "equipment", "sprayer", "harvester"],
+        "location":     ["where", "location", "shop", "store", "near me", "address", "dealer"],
+        "farming_guide":["how to", r"\bsteps\b", "process", "farming", r"\bgrow\b", "cultivation"]
+    }
 
-    # 2. Guide Intent
-    if any(k in msg_low for k in ["steps", "how to", "process", "farming"]):
-        return ["farming_guide"]
-
-    # 3. Tools Intent
-    if any(k in msg_low for k in ["tools", "tractor", "machine", "harvester", "equipment", "show"]):
-        return ["tools"]
-        
-    # Logic-Engine Intents
+    # 1. STRICT PRIORITY ORDER
+    priority = ["set_reminder", "price", "tools", "location", "farming_guide"]
+    
+    for intent in priority:
+        patterns = intents_map[intent]
+        for pattern in patterns:
+            if re.search(pattern, msg_low):
+                return intent
+    
+    # 2. Secondary Logic-Engine Intents (as fallback for specific phrases)
     if any(k in msg_low for k in ["how much", "quantity", "dose", "per acre"]):
-        return ["dosage"]
+        return "dosage"
     if any(k in msg_low for k in ["mix", "combine", "together"]):
-        return ["mixing"]
+        return "mixing"
     if any(k in msg_low for k in ["soil health", "npk", "ph", "soil score"]):
-        return ["soil_score"]
+        return "soil_score"
         
-    # 2. API/DB Intents
+    # 3. API/DB Intents
     if any(k in msg_low for k in ["today", "weather", "rain", "forecast", "pesticide"]):
-        return ["weather_decision"]
+        return "weather_decision"
     if "fertilizer" in msg_low:
-        return ["fertilizer"]
+        return "fertilizer"
         
-    if any(k in msg_low for k in ["remind", "reminder", "set reminder", "alert"]):
-        return ["set_reminder"]
-        
-    return ["general_question"]
+    return "unknown"
 
 # ─────────────────────────────────────────────
 # MANUAL RESPONSE BUILDER
@@ -228,6 +231,19 @@ def build_manual_response(db: Session, intent: str, entities: dict, weather: dic
             "time": new_reminder.reminder_date.isoformat()
         }
         return f"Got it! I have scheduled a reminder for you: {note.capitalize()}.", reminder_obj
+
+    if intent == "location":
+        location_reply = "The nearest agricultural shop is available in your local market. You can visit your nearest fertilizer dealer or enable location for exact directions."
+        location_data = {
+            "type": "location",
+            "shop_name": "Local Agri Store",
+            "address": "Nearby market",
+            "note": "Enable GPS for exact directions"
+        }
+        return location_reply, location_data
+
+    if intent == "unknown":
+        return "I didn’t understand your request clearly. Please ask about crops, tools, prices, or locations.", []
 
     if intent == "dosage":
         res = calculate_dosage(db, entities["crop"], entities["fertilizer"], entities["area"])
@@ -328,9 +344,13 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
 
     try:
         # 1. Detect Intent
-        intents = detect_intents(user_msg)
-        intent = intents[0]
+        intent = detect_intents(user_msg)
         print(f"[AI-API] Intent: {intent}")
+        
+        # 6. Validation Layer (Smart Check)
+        if "where" in user_msg.lower() and intent != "location":
+            intent = "location"
+            print(f"[AI-API] Forced Intent: {intent}")
     
         # 2. Extract Entities
         entities = extract_entities(user_msg)
@@ -347,14 +367,17 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
         user_id = current_user.get("user_id") or current_user.get("id")    
         
         raw_response, response_data = build_manual_response(db, intent, entities, weather_data, user_id)
-        source = "market_estimate" if intent == "price" else ("logic" if intent in ["dosage", "mixing", "soil_score"] else ("api" if intent == "weather_decision" else "db"))
+        source = "market_estimate" if intent == "price" else ("logic" if intent in ["dosage", "mixing", "soil_score"] else ("api" if intent == "weather_decision" else ("db" if intent != "unknown" else "system")))
         
         response_images = response_data if isinstance(response_data, list) else []
-        reminder_obj = response_data if isinstance(response_data, dict) else None
+        reminder_obj = response_data if isinstance(response_data, dict) and intent == "set_reminder" else None
+        location_obj = response_data if isinstance(response_data, dict) and intent == "location" else None
         
         # 4. AI Enhancement (Explanation ONLY)
         enhanced_reply = raw_response
-        if openai_client and intent not in ["tools", "farming_guide"]:
+        
+        # Skip AI enhancement for specific types to ensure zero incorrect replies
+        if openai_client and intent not in ["tools", "farming_guide", "location", "unknown", "set_reminder"]:
             try:
                 prompt = f"You are a helpful agriculture expert. Rewrite this factual advice in simple, natural, farmer-friendly language. DO NOT add new facts. Just improve the explanation:\n\n{raw_response}"
                 res = openai_client.chat.completions.create(
@@ -362,9 +385,19 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=300
                 )
-                enhanced_reply = res.choices[0].message.content.strip()
+                candidate_reply = res.choices[0].message.content.strip()
+                
+                # Validation: If intent is price and no number, or if "follow these practices" in non-guide
+                has_numbers = any(char.isdigit() for char in candidate_reply)
+                if intent == "price" and not has_numbers:
+                    enhanced_reply = raw_response
+                elif intent != "farming_guide" and "follow these practices" in candidate_reply.lower():
+                    enhanced_reply = raw_response
+                else:
+                    enhanced_reply = candidate_reply
             except Exception as e:
                 print(f"[AI-API] AI Enhancement failed: {e}")
+                enhanced_reply = raw_response
                 
         # 5. Prevent Wrong Response & Response Control
         if intent == "tools":
@@ -395,9 +428,9 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
                 enhanced_reply = raw_response
         
         response_type = "price" if intent == "price" or intent == "cost" else \
-                        ("guide" if intent == "farming_guide" else \
+                        ("farming_guide" if intent == "farming_guide" else \
                         ("tools" if intent == "tools" else \
-                        ("reminder" if intent == "set_reminder" else intent)))
+                        ("set_reminder" if intent == "set_reminder" else intent)))
     
         print(f"[AI-API] Response: {enhanced_reply}")
     
@@ -434,6 +467,7 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
             "chat_saved": True,
             "reminder_created": intent == "set_reminder",
             "reminder": reminder_obj,
+            "location_data": location_obj,
             "sessionId": session_id
         }
             
