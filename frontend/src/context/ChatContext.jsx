@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 
-const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000/ai-api';
+const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000/api';
 
 const ChatContext = createContext();
 
@@ -14,6 +14,20 @@ export const ChatProvider = ({ children }) => {
     const [isTyping, setIsTyping] = useState(false);
     const [error, setError] = useState('');
     const [analyses, setAnalyses] = useState([]);
+    const [reminders, setReminders] = useState([]);
+
+    const loadReminders = async () => {
+        try {
+            const res = await api.get('/reminder');
+            setReminders(res.data.reminders || []);
+        } catch (err) {
+            console.error("Failed to load reminders", err);
+        }
+    };
+
+    useEffect(() => {
+        loadReminders();
+    }, []);
 
     const loadSessions = async () => {
         try {
@@ -98,27 +112,50 @@ export const ChatProvider = ({ children }) => {
 
         try {
             const token = localStorage.getItem('agri_assist_token');
-            
             const messageStr = text || 'Please analyze this image.';
             
-            // Send message to Node.js backend to ensure DB persistence
-            const bridgeRes = await api.post('/chat', {
-                message: messageStr,
-                sessionId: activeSessionId,
-                imageBase64,
-                imageMimeType
+            // Redirect directly to Python Expert Engine for the Demo
+            const res = await fetch("http://localhost:8000/api/chat", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    message: messageStr,
+                    sessionId: activeSessionId,
+                    imageBase64,
+                    imageMimeType
+                })
             });
-            
-            const aiReply = bridgeRes.data.reply || 'No response received.';
-            
-            if (aiReply === "AI service is temporarily unavailable") {
-                setError('⚠️ AI service is temporarily unavailable.');
+
+            if (!res.ok) {
+                throw new Error("API error");
             }
 
-            const aiMsg = { id: (Date.now() + 1).toString(), text: aiReply, sender: 'ai', timestamp: new Date() };
+            const data = await res.json();
+            const aiReply = data.reply || 'No response received.';
+            
+            const aiMsg = { 
+                id: (Date.now() + 1).toString(), 
+                text: aiReply, 
+                sender: 'ai', 
+                timestamp: new Date(),
+                intent: data.type,
+                source: data.source,
+                images: data.images
+            };
             setMessages(prev => [...prev, aiMsg]);
             
-            if (bridgeRes.data.sessionId) setActiveSessionId(bridgeRes.data.sessionId);
+            if (data.sessionId) setActiveSessionId(data.sessionId);
+            if (data.reminder_created && data.reminder) {
+                setReminders(prev => {
+                    if (prev.find(r => r.id === data.reminder.id)) return prev;
+                    return [...prev, data.reminder];
+                });
+            } else if (data.reminder_created) {
+                await loadReminders();
+            }
             await loadSessions();
         } catch (error) {
             console.error("Chat Error:", error);
@@ -208,9 +245,9 @@ export const ChatProvider = ({ children }) => {
 
     return (
         <ChatContext.Provider value={{
-            messages, sessions, activeSessionId, isTyping, error, analyses,
+            messages, sessions, activeSessionId, isTyping, error, analyses, reminders, setReminders, setMessages,
             loadSessions, loadHistory, clearHistory, sendMessage, createNewChat,
-            loadAnalyses, deleteAnalysis, analyzeImage
+            loadAnalyses, deleteAnalysis, analyzeImage, loadReminders
         }}>
             {children}
         </ChatContext.Provider>

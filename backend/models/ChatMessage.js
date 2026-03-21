@@ -5,9 +5,9 @@ let ChatMessage;
 const defineChatMessageModel = (sequelize) => {
     ChatMessage = sequelize.define('ChatMessage', {
         id: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
             primaryKey: true,
-            autoIncrement: true
+            defaultValue: DataTypes.UUIDV4
         },
         sessionId: {
             type: DataTypes.STRING(36),

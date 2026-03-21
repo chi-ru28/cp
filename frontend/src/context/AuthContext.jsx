@@ -83,7 +83,7 @@ export const AuthProvider = ({ children }) => {
             setUser({ token: access_token, id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role });
             return { success: true };
         } catch (error) {
-            const msg = error.response?.data?.message || 'Login failed. Please try again.';
+            const msg = error.response?.data?.detail || error.response?.data?.message || 'Login failed. Please try again.';
             return { success: false, message: msg };
         }
     };
@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }) => {
             setUser({ token: access_token, id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role });
             return { success: true };
         } catch (error) {
-            const msg = error.response?.data?.message || 'Registration failed. Please try again.';
+            const msg = error.response?.data?.detail || error.response?.data?.message || 'Registration failed. Please try again.';
             return { success: false, message: msg };
         }
     };

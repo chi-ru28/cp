@@ -10,8 +10,8 @@ def get_weather(city: str):
     """
     api_key = os.getenv("WEATHER_API_KEY")
     if not api_key:
-        print("Error: WEATHER_API_KEY not found in environment.")
         return None
+    api_key = api_key.strip()
 
     url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
     

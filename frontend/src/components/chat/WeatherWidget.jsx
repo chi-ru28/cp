@@ -21,29 +21,45 @@ const WeatherWidget = ({ location = 'Ahmedabad' }) => {
     }, [location]);
 
     if (loading) return (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-full text-xs text-blue-400 animate-pulse">
-            <Cloud size={14} /> {t('weatherLoading')}
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/40 backdrop-blur-md rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 animate-pulse border border-white/40 shadow-sm">
+            <Cloud size={14} className="text-agri-400" /> {t('weatherLoading')}
         </div>
     );
 
     if (!weather) return null;
 
     return (
-        <div className="flex items-center gap-3 px-3 py-1.5 bg-gradient-to-r from-sky-50 to-blue-50 rounded-full border border-sky-100 text-xs text-slate-600">
-            <img
-                src={`https://openweathermap.org/img/wn/${weather.icon}.png`}
-                alt={weather.condition}
-                className="w-6 h-6"
-            />
-            <span className="font-bold text-slate-700">{weather.temp}°C</span>
-            <span className="text-slate-400 capitalize hidden sm:inline">{weather.condition}</span>
-            <span className="flex items-center gap-1 text-blue-500">
-                <Droplets size={11} /> {weather.humidity}%
-            </span>
-            <span className="flex items-center gap-1 text-slate-400 hidden md:flex">
-                <Wind size={11} /> {weather.wind}m/s
-            </span>
-        </div>
+        <motion.div 
+            whileHover={{ y: -1 }}
+            className="flex items-center gap-4 px-4 py-2.5 bg-white/60 backdrop-blur-xl rounded-[1.25rem] border border-white/80 text-[10px] font-black uppercase tracking-widest text-slate-600 shadow-premium group"
+        >
+            <div className="relative">
+                <img
+                    src={`https://openweathermap.org/img/wn/${weather.icon}.png`}
+                    alt={weather.condition}
+                    className="w-7 h-7 filter drop-shadow-md group-hover:scale-110 transition-transform"
+                />
+                <div className="absolute inset-0 bg-agri-400/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            
+            <div className="flex flex-col">
+                <span className="font-black text-slate-800 text-xs leading-none">
+                    {weather.temp}°<span className="text-[10px] text-slate-400">C</span>
+                </span>
+                <span className="text-[8px] text-agri-500 mt-0.5">{weather.condition}</span>
+            </div>
+
+            <div className="h-4 w-[1px] bg-slate-100 hidden sm:block" />
+
+            <div className="hidden sm:flex items-center gap-3">
+                <span className="flex items-center gap-1.5 text-blue-500">
+                    <Droplets size={12} strokeWidth={2.5} /> {weather.humidity}%
+                </span>
+                <span className="flex items-center gap-1.5 text-slate-400 hidden lg:flex">
+                    <Wind size={12} strokeWidth={2.5} /> {weather.wind}m/s
+                </span>
+            </div>
+        </motion.div>
     );
 };
 

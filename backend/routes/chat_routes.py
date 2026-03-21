@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -12,14 +12,16 @@ load_dotenv()
 SECRET_KEY = os.getenv("JWT_SECRET", "thisisasupersecretkeythatshouldbelongandunguessable123!")
 ALGORITHM = "HS256"
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
-
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(authorization: str = Header(None)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if not authorization or not authorization.startswith("Bearer "):
+        raise credentials_exception
+    
+    token = authorization.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("id")
@@ -43,14 +45,14 @@ async def get_sessions(current_user: dict = Depends(get_current_user), db: Sessi
     # Fetch dedicated sessions from ChatSession table
     sessions = db.query(models.ChatSession).filter(
         models.ChatSession.user_id == user_id
-    ).order_by(desc(models.ChatSession.updated_at)).all()
+    ).order_by(desc(models.ChatSession.created_at)).all()
     
     formatted = []
     for s in sessions:
         formatted.append({
             "sessionId": s.id,
             "title": s.title,
-            "updatedAt": s.updated_at.isoformat() if s.updated_at else None,
+            "updatedAt": s.created_at.isoformat() if s.created_at else None,
             "role": s.role
         })
         

@@ -86,6 +86,7 @@ class Tool(Base):
     recommended_crop = Column(Text)
     description = Column(Text)
     purchase_link = Column(String(500))
+    image_url = Column(Text, nullable=True)
 
 class Product(Base):
     __tablename__ = "products"
@@ -108,7 +109,6 @@ class ChatSession(Base):
     title = Column(String(255), nullable=False, default="New Chat")
     role = Column(String(20), nullable=False, default="farmer")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
@@ -130,6 +130,7 @@ class Reminder(Base):
     reminder_type = Column(String(50), nullable=True)
     message = Column(Text, nullable=False)
     reminder_date = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String(20), default="pending")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class CropImage(Base):
@@ -150,6 +151,25 @@ class Advisory(Base):
     message = Column(Text, nullable=False)
     target_crop = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class FertilizerDosage(Base):
+    __tablename__ = "fertilizer_dosage"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    crop = Column(String(100), nullable=False, index=True)
+    fertilizer = Column(String(100), nullable=False, index=True)
+    min_dose = Column(Numeric(10, 2), nullable=False)   # kg per acre
+    max_dose = Column(Numeric(10, 2), nullable=False)   # kg per acre
+    unit = Column(String(20), nullable=False, default="kg")
+
+class FertilizerCompatibility(Base):
+    __tablename__ = "fertilizer_compatibility"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fertilizer_1 = Column(String(100), nullable=False, index=True)
+    fertilizer_2 = Column(String(100), nullable=False, index=True)
+    compatible = Column(Boolean, nullable=False, default=True)
+    warning = Column(Text, nullable=True)
 
 class AppTranslation(Base):
     __tablename__ = "translations"
