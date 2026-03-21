@@ -25,10 +25,7 @@ app = FastAPI(title="AgriAssist Backend", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=["*"], # In production, replace with actual Vercel URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,4 +56,9 @@ def read_root():
 
 @app.get("/")
 def home():
-    return {"message": "AgriAssist AI Backend is active. Use /ai-api for API access."}
+    return {"message": "AgriAssist AI Backend is active. Use /api/chat for AI access."}
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("api.main:app", host="0.0.0.0", port=port, reload=True)
