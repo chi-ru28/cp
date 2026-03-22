@@ -142,33 +142,29 @@ def extract_city(message: str, default_loc: str = "Ahmedabad"):
 def detect_intents(msg: str) -> str:
     msg_low = msg.lower().strip()
     
-    # Keyword Lists (Regex patterns with word boundaries)
-    intents_map = {
-        "set_reminder": ["remind", "reminder", "schedule"],
-        "price":        ["price", "cost", "rate", "₹", r"\brs\b", r"\bkg\b"],
-        "tools":        ["tool", "tractor", "machine", "equipment", "sprayer", "harvester"],
-        "location":     ["where", "location", "shop", "store", "near me", "address", "dealer"],
-        "farming_guide":["how to", r"\bsteps\b", "process", "farming", r"\bgrow\b", "cultivation"]
-    }
+    # 1. STRICT PRIORITY: Price ALWAYS overrides Location
+    price_keywords = ["price", "cost", "rate", "kg", "₹", "rs", "how much"]
+    location_keywords = ["where", "near", "shop", "store", "location"]
 
-    # 1. STRICT PRIORITY ORDER
-    priority = ["set_reminder", "price", "tools", "location", "farming_guide"]
+    if any(word in msg_low for word in price_keywords):
+        return "price"
     
-    for intent in priority:
-        patterns = intents_map[intent]
-        for pattern in patterns:
-            if re.search(pattern, msg_low):
-                return intent
-    
-    # 2. Secondary Logic-Engine Intents (as fallback for specific phrases)
-    if any(k in msg_low for k in ["how much", "quantity", "dose", "per acre"]):
+    if any(word in msg_low for word in location_keywords):
+        return "location"
+
+    # 2. Other Intents
+    if any(k in msg_low for k in ["remind", "reminder", "schedule"]):
+        return "set_reminder"
+    if any(k in msg_low for k in ["tool", "tractor", "machine", "equipment", "sprayer", "harvester"]):
+        return "tools"
+    if any(k in msg_low for k in ["how to", "steps", "process", "farming", "grow", "cultivation"]):
+        return "farming_guide"
+    if any(k in msg_low for k in ["quantity", "dose", "per acre"]):
         return "dosage"
     if any(k in msg_low for k in ["mix", "combine", "together"]):
         return "mixing"
     if any(k in msg_low for k in ["soil health", "npk", "ph", "soil score"]):
         return "soil_score"
-        
-    # 3. API/DB Intents
     if any(k in msg_low for k in ["today", "weather", "rain", "forecast", "pesticide"]):
         return "weather_decision"
     if "fertilizer" in msg_low:
@@ -233,17 +229,11 @@ def build_manual_response(db: Session, intent: str, entities: dict, weather: dic
         return f"Got it! I have scheduled a reminder for you: {note.capitalize()}.", reminder_obj
 
     if intent == "location":
-        location_reply = "The nearest agricultural shop is available in your local market. You can visit your nearest fertilizer dealer or enable location for exact directions."
-        location_data = {
-            "type": "location",
-            "shop_name": "Local Agri Store",
-            "address": "Nearby market",
-            "note": "Enable GPS for exact directions"
-        }
-        return location_reply, location_data
+        return ("The nearest agricultural shop is available in your local market. Enable location for exact directions.", 
+                {"type": "location", "shop_name": "Local Agri Store", "address": "Nearby market", "note": "Enable GPS for exact directions"})
 
     if intent == "unknown":
-        return "I didn’t understand your request clearly. Please ask about crops, tools, prices, or locations.", []
+        return "I didn’t understand your request. Please ask about crops, tools, prices, or locations.", []
 
     if intent == "dosage":
         res = calculate_dosage(db, entities["crop"], entities["fertilizer"], entities["area"])
@@ -343,14 +333,13 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
         }
 
     try:
-        # 1. Detect Intent
+        # 1. Detect Intent FIRST (Strict Locking)
         intent = detect_intents(user_msg)
-        print(f"[AI-API] Intent: {intent}")
+        print("USER:", user_msg)
+        print("INTENT:", intent)
         
-        # 6. Validation Layer (Smart Check)
-        if "where" in user_msg.lower() and intent != "location":
-            intent = "location"
-            print(f"[AI-API] Forced Intent: {intent}")
+        # 6. Validation Layer (REMOVE SMART CHECKS THAT OVERRIDE PRICE or LOCATION WRONGLY)
+        # Price Priority is already locked in detect_intents
     
         # 2. Extract Entities
         entities = extract_entities(user_msg)
@@ -396,7 +385,8 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
                 else:
                     enhanced_reply = candidate_reply
             except Exception as e:
-                print(f"[AI-API] AI Enhancement failed: {e}")
+                print("AI ERROR:", e)
+                # FORCE MANUAL FALLBACK on AI failure
                 enhanced_reply = raw_response
                 
         # 5. Prevent Wrong Response & Response Control
@@ -426,13 +416,18 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
             # Explicitly force-remove any "Here are some farming tips" hallucinated additions
             if "farming tips" in enhanced_reply.lower() or "additionally," in enhanced_reply.lower():
                 enhanced_reply = raw_response
-        
+
+        # 8. POST-RESPONSE VALIDATION (FAIL-SAFE)
+        if intent == "price" and "₹" not in enhanced_reply:
+            print("[AI-API] Validation Failed: Price response missing ₹. Regenerating...")
+            enhanced_reply, _ = build_manual_response(db, intent, entities, None, None)
+
         response_type = "price" if intent == "price" or intent == "cost" else \
                         ("farming_guide" if intent == "farming_guide" else \
                         ("tools" if intent == "tools" else \
                         ("set_reminder" if intent == "set_reminder" else intent)))
-    
-        print(f"[AI-API] Response: {enhanced_reply}")
+
+        print("FINAL RESPONSE:", enhanced_reply)
     
         # 5. Persistence & Formatting
         session_id = request.sessionId or f"sess_{int(datetime.now().timestamp())}"
@@ -455,9 +450,9 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
             db.add(models.ChatMessage(session_id=session_id, sender="ai", message=enhanced_reply, intent=intent))
             db.commit()
         except Exception as e:
+            print("DB ERROR:", e)
             import traceback
             traceback.print_exc()
-            print(f"[AI-API] History save error: {e}")
     
         return {
             "reply": enhanced_reply or "Here is the information you requested.",
@@ -476,9 +471,9 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
         traceback.print_exc()
         print(f"[AI-API] Critical endpoint crash guarded: {global_e}")
         return {
-            "reply": "I am experiencing technical difficulties finding specific data right now, but generally, maintaining balanced soil pH and monitoring weather conditions before applying inputs is highly recommended for stable crop yields. Please try your specific request again shortly.",
+            "reply": "I didn’t understand your request. Please ask about crops, tools, prices, or locations.",
             "images": [],
-            "type": "error_fallback",
+            "type": "unknown",
             "source": "system",
             "chat_saved": False,
             "reminder_created": False

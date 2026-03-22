@@ -1,9 +1,9 @@
 fastapi
 uvicorn
 sqlalchemy
+python-dotenv
 psycopg2-binary
 requests
-python-dotenv
 python-jose[cryptography]
 openai
 pydantic

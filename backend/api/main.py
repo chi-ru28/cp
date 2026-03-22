@@ -8,6 +8,20 @@ import traceback
 # Add the backend directory (parent of api/) to sys.path
 # so that modules like ai_chatbot, models, routes etc. resolve correctly
 # This is required for Vercel Python serverless (api/main.py is the entry point)
+from dotenv import load_dotenv
+import os
+
+# 1. Load Environment Variables First
+load_dotenv()
+
+# 2. Strict Environment Validation (Fail Fast)
+required_env = ["OPENAI_API_KEY", "DATABASE_URL"]
+for key in required_env:
+    if not os.getenv(key):
+        print(f"CRITICAL ERROR: {key} is missing in .env file")
+        # In production/deployment, we might want to exit: 
+        # import sys; sys.exit(1)
+
 _backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)

@@ -1,36 +1,51 @@
-# AgriAssist: Smart Fertilizer, Soil and Farm Tool Recommendation Platform
+# AgriAssist - AI Agricultural Assistant
 
-## Architecture
-- **Frontend**: React (Vite) + Tailwind CSS
-- **Backend**: Express/Node.js + PostgreSQL (Sequelize)
-- **AI Integration**: Python FastAPI + Gemini AI
+AgriAssist is a production-ready AI chatbot designed to help farmers with pricing, location, reminders, and farming techniques.
 
-## Setup Instructions
+## 🚀 Quick Setup Guide
 
-### 1. Prerequisites
-- Python 3.10+
-- Node.js v18+
-- PostgreSQL v14+ installed and running on `localhost:5432`
+Follow these steps to get the project running on your system:
 
-### 2. Local Configuration
-1. Create a `backend/.env` file:
-```env
-DATABASE_URL=postgresql://postgres:user@localhost:5432/AgriAssist
-JWT_SECRET=your_jwt_secret
-GEMINI_API_KEY=your_gemini_api_key_here
-WEATHER_API_KEY=your_weather_api_key_here
-PORT=5000
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd AgriAssist
 ```
 
-### 3. Quick Start (Windows)
-Double-click `start.bat` from the root directory. It will install dependencies and launch the servers.
+### 2. Backend Setup
+Navigate to the backend directory and install dependencies:
+```bash
+cd backend
+python -m venv venv
+# On Windows:
+.\venv\Scripts\activate
+# On Linux/Mac:
+source venv/bin/activate
 
-### 4. Deployment (Vercel)
-The backend is configured for Vercel. Ensure you set the following **Environment Variables** in the Vercel Dashboard:
-- `DATABASE_URL`: A hosted PostgreSQL URL (from Supabase, Neon, etc.)
-- `JWT_SECRET`
-- `GEMINI_API_KEY`
-- `WEATHER_API_KEY`
+pip install -r requirements.txt
+```
 
-Visit the App at `http://localhost:5173`
+### 3. Environment Variables
+1. Copy the template:
+   ```bash
+   cp .env.example .env
+   ```
+2. Open `.env` and add your `OPENAI_API_KEY`, `DATABASE_URL`, and `WEATHER_API_KEY`.
 
+### 4. Run the Server
+```bash
+uvicorn api.main:app --reload
+```
+The API will be available at `http://localhost:8000`.
+
+## 🎯 Key Features
+- **Price Extraction**: "cost of urea for 10kg"
+- **Location Finder**: "where is the nearest shop?"
+- **Reminders**: "remind me to water crops tomorrow"
+- **Farming Guides**: "how to grow wheat?"
+- **Tool Recommendation**: "show me tractors"
+
+## 🛠 Troubleshooting
+- **Missing Env**: If the app fails to start, check your `.env` file for missing keys.
+- **DB Connection**: Ensure your PostgreSQL database is accessible and the URL is correct.
+- **AI Failure**: If the AI API is down, the system will automatically fall back to manual logic.

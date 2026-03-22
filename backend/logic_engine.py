@@ -29,8 +29,8 @@ def extract_entities(message: str) -> dict:
     area_match = re.search(r'(\d+(\.\d+)?)\s*acres?', msg)
     area = float(area_match.group(1)) if area_match else 1.0
 
-    # --- Quantity: "10 kg", "5 bags"
-    qty_match = re.search(r'(\d+(\.\d+)?)\s*(kg|bags?|litre|liter|ml)', msg)
+    # --- Quantity: "10 kg", "5 bags", "for 10"
+    qty_match = re.search(r'(\d+(\.\d+)?)', msg)
     quantity = float(qty_match.group(1)) if qty_match else 1.0
 
     # --- NPK: "N=60", "n 60", "nitrogen 60"
@@ -293,11 +293,15 @@ def estimate_cost(db: Session, fertilizer: str, quantity: float) -> str:
         }
         rate = market_rates.get(fertilizer.lower())
         if rate:
-            total = rate * quantity
-            qty_fmt = int(quantity) if quantity.is_integer() else quantity
+            qty_val = int(quantity) if quantity.is_integer() else quantity
+            total = rate * qty_val
+            
+            if fertilizer.lower() == "urea":
+                return f"Urea costs approximately ₹14 per kg. For {qty_val} kg, the estimated cost is ₹{total:.0f}."
+            
             return (
                 f"{fertilizer.capitalize()} currently costs around ₹{rate} per kg. "
-                f"For {qty_fmt} kg, it will be approximately ₹{total:.0f}. "
+                f"For {qty_val} kg, it will be approximately ₹{total:.0f}. "
                 f"Prices may vary slightly depending on your local market. "
                 f"You can check nearby fertilizer shops or government centers for the exact rate."
             )
