@@ -6,7 +6,8 @@ psycopg2-binary
 requests
 python-jose[cryptography]
 openai
-pydantic
+pydantic[email]
 python-multipart
 passlib[bcrypt]
+bcrypt
 email-validator

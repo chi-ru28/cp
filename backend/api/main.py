@@ -4,6 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
 import traceback
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 # Add the backend directory (parent of api/) to sys.path
 # so that modules like ai_chatbot, models, routes etc. resolve correctly
@@ -39,7 +42,7 @@ app = FastAPI(title="AgriAssist Backend", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],  # for testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
