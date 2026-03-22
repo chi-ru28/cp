@@ -13,6 +13,13 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@
 if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# DNS Override for Neon DB
+if "ep-aged-smoke-a1x581od.ap-southeast-1.aws.neon.tech" in SQLALCHEMY_DATABASE_URL:
+    if "?" in SQLALCHEMY_DATABASE_URL:
+        SQLALCHEMY_DATABASE_URL += "&hostaddr=13.228.46.236"
+    else:
+        SQLALCHEMY_DATABASE_URL += "?hostaddr=13.228.46.236"
+
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

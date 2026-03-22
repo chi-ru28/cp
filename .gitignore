@@ -5,3 +5,14 @@ error.log
 error.txt
 error.sql
 drop_db.py
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+backend/venv/
+.npm
+.DS_Store
+.vercel/
+build/
+dist/

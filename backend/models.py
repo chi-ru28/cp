@@ -104,7 +104,7 @@ class Product(Base):
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title = Column(String(255), nullable=False, default="New Chat")
     role = Column(String(20), nullable=False, default="farmer")
@@ -114,7 +114,7 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    session_id = Column(String(36), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
     sender = Column(String(10), nullable=False) # 'user' or 'ai'
     message = Column(Text, nullable=False)
     context_used = Column(JSON, nullable=True) # To store DB context from RAG

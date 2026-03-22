@@ -9,3 +9,4 @@ openai
 pydantic
 python-multipart
 passlib[bcrypt]
+email-validator

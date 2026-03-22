@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Cloud, Wind, Droplets } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import api from '../../services/api';
 
 const WeatherWidget = ({ location = 'Ahmedabad' }) => {

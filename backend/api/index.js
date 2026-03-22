@@ -1,6 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const dns = require('dns');
+
+// DNS Override for Neon DB connectivity
+const originalLookup = dns.lookup;
+dns.lookup = function(hostname, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    if (hostname === 'ep-aged-smoke-a1x581od.ap-southeast-1.aws.neon.tech') {
+        if (options.all) return callback(null, [{address: '13.228.46.236', family: 4}]);
+        return callback(null, '13.228.46.236', 4);
+    }
+    return originalLookup(hostname, options, callback);
+};
 
 // Updated imports to point up one level
 const { connectDB } = require('../config/database');
