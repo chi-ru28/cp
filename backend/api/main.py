@@ -36,13 +36,19 @@ import models  # ensures all models (incl. new ones) are registered
 from pydantic import BaseModel
 
 # Auto-create any missing tables (safe, non-destructive)
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AgriAssist Backend", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # for testing
+    allow_origins=[
+        "https://cp-phi-one.vercel.app",
+        "https://cp-phi-one.vercel.app/",
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ],
+    allow_origin_regex="https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,7 +65,20 @@ app.include_router(analysis_routes.router, prefix="/api/analysis", tags=["Crop A
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    try:
+        from database import engine
+        # Use a simple connection test
+        with engine.connect() as conn:
+            return {
+                "status": "ok",
+                "database": "connected",
+                "environment": os.getenv("NODE_ENV", "production")
+            }
+    except Exception:
+        return {
+            "status": "error",
+            "database": "disconnected"
+        }
 
 @app.get("/api")
 @app.get("/api/")

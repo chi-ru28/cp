@@ -44,13 +44,13 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (auth0Loading) return; // wait for Auth0 to settle first
 
-        const token = localStorage.getItem('agri_assist_token');
+        const token = localStorage.getItem('token');
         if (token) {
             const decoded = decodeToken(token);
             if (decoded && decoded.exp * 1000 > Date.now()) {
                 setUser({ token, id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role });
             } else {
-                localStorage.removeItem('agri_assist_token');
+                localStorage.removeItem('token');
             }
         } else if (auth0Authenticated && auth0User) {
             // Auth0 session is active — sync with backend to get role
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', { email, password });
             const { access_token } = response.data;
             const decoded = decodeToken(access_token);
-            localStorage.setItem('agri_assist_token', access_token);
+            localStorage.setItem('token', access_token);
             setUser({ token: access_token, id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role });
             return { success: true };
         } catch (error) {
@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/register', { name, email, password, role, location });
             const { access_token } = response.data;
             const decoded = decodeToken(access_token);
-            localStorage.setItem('agri_assist_token', access_token);
+            localStorage.setItem('token', access_token);
             setUser({ token: access_token, id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role });
             return { success: true };
         } catch (error) {
@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }) => {
 
     // ─── Logout (both flows) ────────────────────────────────────────────────
     const logout = () => {
-        localStorage.removeItem('agri_assist_token');
+        localStorage.removeItem('token');
         setUser(null);
         if (auth0Authenticated) {
             auth0Logout({ logoutParams: { returnTo: window.location.origin } });

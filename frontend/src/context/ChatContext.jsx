@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 
-const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL || 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const ChatContext = createContext();
 
@@ -15,6 +15,27 @@ export const ChatProvider = ({ children }) => {
     const [error, setError] = useState('');
     const [analyses, setAnalyses] = useState([]);
     const [reminders, setReminders] = useState([]);
+
+    const [loading, setLoading] = useState(true);
+
+    // Initial Health Check to wake up Render (Cold Start handling)
+    useEffect(() => {
+        const wakeUpServer = async () => {
+            try {
+                // Timeout after 10 seconds for the wake-up call
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                await fetch(`${API_URL}/health`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+            } catch (err) {
+                console.log("Server waking up or unreachable...");
+            } finally {
+                setLoading(false);
+            }
+        };
+        wakeUpServer();
+    }, []);
 
     const loadReminders = async () => {
         try {
@@ -111,11 +132,11 @@ export const ChatProvider = ({ children }) => {
         setError('');
 
         try {
-            const token = localStorage.getItem('agri_assist_token');
+            const token = localStorage.getItem('token');
             const messageStr = text || 'Please analyze this image.';
             
-            // Redirect directly to Python Expert Engine for the Demo
-            const res = await fetch("http://localhost:8000/api/chat", {
+            // Use the unified API_URL for chat
+            const res = await fetch(`${API_URL}/api/chat`, {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json",
@@ -183,8 +204,8 @@ export const ChatProvider = ({ children }) => {
             const formData = new FormData();
             formData.append('file', file);
 
-            const token = localStorage.getItem('agri_assist_token');
-            const response = await fetch(`${FASTAPI_URL}/chat/analyze-image`, {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/api/chat/analyze-image`, {
                 method: "POST",
                 headers: { 
                     "Authorization": `Bearer ${token}`
@@ -245,7 +266,7 @@ export const ChatProvider = ({ children }) => {
 
     return (
         <ChatContext.Provider value={{
-            messages, sessions, activeSessionId, isTyping, error, analyses, reminders, setReminders, setMessages,
+            messages, sessions, activeSessionId, isTyping, error, analyses, reminders, loading, setReminders, setMessages,
             loadSessions, loadHistory, clearHistory, sendMessage, createNewChat,
             loadAnalyses, deleteAnalysis, analyzeImage, loadReminders
         }}>
