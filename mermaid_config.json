@@ -1,0 +1,34 @@
+{
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Inter, sans-serif",
+    "fontSize": "16px",
+    "primaryColor": "#ffffff",
+    "primaryTextColor": "#000000",
+    "primaryBorderColor": "#000000",
+    "lineColor": "#000000",
+    "secondaryColor": "#f8f9fa",
+    "tertiaryColor": "#f0f0f0",
+    "actorTextColor": "#000000",
+    "actorBorder": "#000000",
+    "actorBkg": "#ffffff",
+    "signalColor": "#000000",
+    "signalTextColor": "#000000",
+    "labelBoxBkgColor": "#ffffff",
+    "labelBoxBorderColor": "#000000",
+    "labelTextColor": "#000000",
+    "loopTextColor": "#000000",
+    "noteBorderColor": "#000000",
+    "noteBkgColor": "#ffffff",
+    "noteTextColor": "#000000",
+    "activationBorderColor": "#000000",
+    "activationBkgColor": "#cccccc",
+    "sequenceNumberColor": "#ffffff"
+  },
+  "class": {
+    "useMaxWidth": false,
+    "htmlLabels": true,
+    "diagramPadding": 40,
+    "classSpacing": 50
+  }
+}

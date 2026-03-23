@@ -36,7 +36,7 @@ import models  # ensures all models (incl. new ones) are registered
 from pydantic import BaseModel
 
 # Auto-create any missing tables (safe, non-destructive)
-# Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AgriAssist Backend", version="1.0.0")
 
@@ -45,6 +45,8 @@ app.add_middleware(
     allow_origins=[
         "https://cp-phi-one.vercel.app",
         "https://cp-phi-one.vercel.app/",
+        "https://phi-one.vercel.app",
+        "https://phi-one.vercel.app/",
         "http://localhost:5173",
         "http://localhost:3000"
     ],
