@@ -8,6 +8,5 @@ python-jose[cryptography]
 openai
 pydantic[email]
 python-multipart
-passlib[bcrypt]
 bcrypt
 email-validator
